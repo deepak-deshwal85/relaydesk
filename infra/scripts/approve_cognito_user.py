@@ -29,6 +29,10 @@ import sys
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse, urlunparse
 
+SCRIPTS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS_DIR))
+from rds_tunnel import port_is_open, rds_tunnel_context  # noqa: E402
+
 RELAYDESK_ROLE_GROUPS = (
     "guest-clients",
     "approved-clients",
@@ -122,6 +126,11 @@ def rewrite_database_url_for_tunnel(database_url: str, *, local_port: int = 1543
     return urlunparse(parsed._replace(netloc=netloc))
 
 
+def _is_localhost_database_url(database_url: str) -> bool:
+    hostname = urlparse(database_url).hostname or ""
+    return hostname in {"127.0.0.1", "localhost"}
+
+
 def resolve_database_url(
     *,
     repo_root: Path,
@@ -161,7 +170,7 @@ def resolve_database_url(
         candidates.append((f"SSM /{project}/{environment}/api/DATABASE_URL", ssm_url))
 
     password = os.getenv("RDS_DB_PASSWORD", "").strip()
-    if use_tunnel and password:
+    if password:
         try:
             tunnel_url = build_tunnel_database_url(
                 terraform_dir=terraform_dir,
@@ -384,6 +393,8 @@ asyncio.run(_run())
 """
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
+    if _is_localhost_database_url(database_url):
+        env["DATABASE_SSL"] = "1"
     result = subprocess.run(
         ["uv", "run", "python", "-c", script],
         cwd=str(api_dir),
@@ -436,7 +447,12 @@ def main() -> int:
     parser.add_argument(
         "--use-tunnel",
         action="store_true",
-        help="Use localhost:15432 (RDS SSM tunnel). Requires rds_tunnel.py start.",
+        help="Rewrite remote DATABASE_URL to localhost tunnel port.",
+    )
+    parser.add_argument(
+        "--no-tunnel",
+        action="store_true",
+        help="Do not auto-start the RDS SSM tunnel (assume it is already running).",
     )
     parser.add_argument(
         "--tunnel-port",
@@ -512,11 +528,37 @@ def main() -> int:
             use_tunnel=args.use_tunnel,
             tunnel_port=args.tunnel_port,
         )
-        upsert_client_business_phone(
-            email=email,
-            business_phone=args.business_phone.strip(),
-            database_url=database_url,
-        )
+        if _is_localhost_database_url(database_url):
+            profile = args.profile or os.getenv("AWS_PROFILE") or "relaydesk-admin"
+            if args.no_tunnel:
+                if not port_is_open("127.0.0.1", args.tunnel_port):
+                    raise RuntimeError(
+                        f"No RDS tunnel on 127.0.0.1:{args.tunnel_port}. "
+                        "Start one with: python infra/scripts/rds_tunnel.py start"
+                    )
+                upsert_client_business_phone(
+                    email=email,
+                    business_phone=args.business_phone.strip(),
+                    database_url=database_url,
+                )
+            else:
+                with rds_tunnel_context(
+                    profile=profile,
+                    region=args.region,
+                    terraform_dir=Path(args.terraform_dir).resolve(),
+                    local_port=args.tunnel_port,
+                ):
+                    upsert_client_business_phone(
+                        email=email,
+                        business_phone=args.business_phone.strip(),
+                        database_url=database_url,
+                    )
+        else:
+            upsert_client_business_phone(
+                email=email,
+                business_phone=args.business_phone.strip(),
+                database_url=database_url,
+            )
         print(f"Tell {email} to sign out and sign in again to refresh access.")
     elif not args.revoke and not args.dry_run:
         print(f"Tell {email} to sign out and sign in again to refresh access.")

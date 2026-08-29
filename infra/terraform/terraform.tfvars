@@ -3,7 +3,7 @@ environment  = "prod"
 project_name = "relaydesk"
 
 # Required: your GitHub org or username (for OIDC deploy role trust)
-github_org  = "YOUR_GITHUB_ORG_OR_USER"
+github_org  = "deepak-deshwal85"
 github_repo = "relaydesk"
 
 # Separate EC2 hosts (API and voice agent do not share a machine)

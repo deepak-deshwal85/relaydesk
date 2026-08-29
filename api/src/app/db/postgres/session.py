@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import ssl
 from collections.abc import AsyncGenerator
 from urllib.parse import urlparse
@@ -20,7 +21,8 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 def _engine_connect_args(database_url: str) -> dict:
     hostname = urlparse(database_url).hostname or ""
-    if hostname in {"", "localhost", "127.0.0.1"}:
+    use_ssl = os.getenv("DATABASE_SSL", "").lower() in {"1", "true", "yes"}
+    if hostname in {"", "localhost", "127.0.0.1"} and not use_ssl:
         return {}
 
     # AWS RDS PostgreSQL requires encrypted connections (pg_hba: no encryption).

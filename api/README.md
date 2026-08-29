@@ -83,7 +83,7 @@ python infra/scripts/rds_tunnel.py start
 **Terminal 2 — API**:
 
 ```powershell
-$env:RDS_DB_PASSWORD = "YourRdsPassword"
+$env:RDS_DB_PASSWORD = "RelayDesh1#"
 python infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 cd api
 uv sync

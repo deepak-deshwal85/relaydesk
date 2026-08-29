@@ -14,6 +14,47 @@ Use this when you:
 
 ---
 
+## Automated setup (recommended)
+
+For a **new AWS account**, use the one-shot setup script instead of running each phase manually:
+
+1. Copy and fill local secrets:
+
+```bash
+cp api/.env.example api/.env
+cp ui/.env.example ui/.env
+cp voice-agent/.env.example voice-agent/.env
+# Edit: OpenAI, Qdrant, LiveKit, AssemblyAI, DeepSeek, Deepgram, AUTH_SECRET, etc.
+```
+
+2. Optional — copy [`scripts/setup.config.example.json`](scripts/setup.config.example.json) to `scripts/setup.config.json` and set `github_org`, `ui_domain_name`, and optional `approve_admin`.
+
+3. Run setup (PowerShell):
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourStrongRdsPassword"
+$env:AWS_PROFILE = "relaydesk-admin"
+python infra/scripts/setup_infra.py --init-tfvars --profile relaydesk-admin
+```
+
+**What it runs automatically:** AWS credential check → `terraform init/apply` (ACM wait if domain set) → patch Cognito/URL fields in `.env` → RDS bootstrap (Deepak seed) → `sync_ssm_parameters.py` → `deploy_all.py` → ECS health wait → optional `approve_cognito_user.py`.
+
+| Flag | Use when |
+|------|----------|
+| `--dry-run` | Preview steps only |
+| `--init-tfvars` | Create `terraform.tfvars` from example + config |
+| `--init-env` | Copy missing `.env` from `.env.example` |
+| `--skip-terraform` | Infra already applied |
+| `--skip-voice` | Deploy API + UI only (`voice_agent_desired_count = 0`) |
+| `--skip-bootstrap` | Keep existing RDS data |
+| `--approve-admin-email` | Promote admin after first SSO sign-in |
+
+**Still manual:** Cloudflare DNS (ACM + ALB CNAMEs), first Cognito sign-in before admin approval, LiveKit SIP (Phase 9), GitHub Actions variables (Phase 10). The script prints these at the end.
+
+For **destroy + full rebuild** of an existing stack, use [`rebuild_infra.py`](scripts/rebuild_infra.py) instead.
+
+---
+
 ## What you are building
 
 ```
@@ -70,9 +111,9 @@ Collect API keys and endpoints. These are **not** created by Terraform.
 | **Qdrant Cloud** | API | `QDRANT_CLUSTER_ENDPOINT`, `QDRANT_API_KEY` |
 | **OpenAI** | API embeddings | `OPENAI_API_KEY` |
 | **LiveKit Cloud** | API outbound + voice agent | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, SIP trunk ID |
-| **xAI** | Voice agent LLM | `XAI_API_KEY` |
-| **Deepgram** | Voice agent STT | `DEEPGRAM_API_KEY` |
-| **Cartesia** | Voice agent TTS | `CARTESIA_API_KEY` |
+| **AssemblyAI** | Voice agent STT | `ASSEMBLYAI_API_KEY` |
+| **DeepSeek** | Voice agent LLM | `DEEPSEEK_API_KEY` |
+| **Deepgram** | Voice agent TTS (Aura-2) | `DEEPGRAM_API_KEY` |
 | **Cal.com** | Voice agent scheduling | `CALCOM_API_KEY` |
 | **Domain DNS** | UI HTTPS | e.g. Cloudflare for `ui_domain_name` |
 
@@ -107,7 +148,7 @@ Edit `terraform.tfvars` for the **new account**:
 
 ```bash
 # bash
-export TF_VAR_rds_master_password='YourStrongRdsPassword'
+export TF_VAR_rds_master_password='Relay1Desk#'
 
 # PowerShell
 $env:TF_VAR_rds_master_password = "YourStrongRdsPassword"
@@ -206,7 +247,7 @@ cd voice-agent
 cp .env.example .env
 ```
 
-Set LiveKit, xAI, Deepgram, Cartesia, Cal.com keys. For AWS ECS, `RAG_API_BASE_URL` is injected automatically (`http://api.relaydesk.local:8090`). For local dev use `http://127.0.0.1:8090`.
+Set LiveKit, AssemblyAI, DeepSeek, Deepgram, Cal.com keys. For AWS ECS, `RAG_API_BASE_URL` is injected automatically (`http://api.relaydesk.local:8090`). For local dev use `http://127.0.0.1:8090`.
 
 `COGNITO_CLIENT_ID` / `COGNITO_CLIENT_SECRET` — M2M client (voice agent). Secret can be synced from Terraform in Phase 4.
 
@@ -448,18 +489,20 @@ See [`../voice-agent/README.md`](../voice-agent/README.md) for agent configurati
 
 ## Order summary (quick checklist)
 
+**Automated:** `python infra/scripts/setup_infra.py --init-tfvars` covers phases 0–6 and optionally 8.
+
 ```
 [ ] Phase 0  AWS account + CLI + external API keys
-[ ] Phase 1  terraform.tfvars (+ TF_VAR_rds_master_password)
-[ ] Phase 2  terraform init && apply
-[ ] Phase 3  api/.env, ui/.env, voice-agent/.env
-[ ] Phase 4  sync_ssm_parameters.py (+ DATABASE_URL --from-rds)
-[ ] Phase 5  rds_tunnel + bootstrap_db.py --yes
-[ ] Phase 6  deploy_all.py (or per-service deploy)
-[ ] Phase 7  Domain + ACM + redeploy UI
-[ ] Phase 8  approve_cognito_user.py
-[ ] Phase 9  LiveKit / SIP (if telephony)
-[ ] Phase 10 GitHub Actions variables (optional)
+[ ] Phase 1  terraform.tfvars (+ TF_VAR_rds_master_password)     ← --init-tfvars
+[ ] Phase 2  terraform init && apply                               ← setup_infra.py
+[ ] Phase 3  api/.env, ui/.env, voice-agent/.env (vendor keys)     ← fill before run
+[ ] Phase 4  sync_ssm_parameters.py (+ DATABASE_URL --from-rds)    ← setup_infra.py
+[ ] Phase 5  rds_tunnel + bootstrap_db.py --yes                    ← setup_infra.py
+[ ] Phase 6  deploy_all.py (or per-service deploy)                 ← setup_infra.py
+[ ] Phase 7  Domain + ACM + redeploy UI                            ← partial (ACM wait in script)
+[ ] Phase 8  approve_cognito_user.py                               ← --approve-admin-email
+[ ] Phase 9  LiveKit / SIP (if telephony)                          ← manual
+[ ] Phase 10 GitHub Actions variables (optional)                   ← manual (printed at end)
 ```
 
 ---

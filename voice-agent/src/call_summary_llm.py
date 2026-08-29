@@ -4,13 +4,12 @@ import logging
 import os
 
 from livekit.agents import llm
-from livekit.plugins import xai
 
 from call_summary_builder import EMPTY_TRANSCRIPT_MESSAGE, MAX_SUMMARY_LENGTH
+from voice_pipeline_config import build_llm
 
 logger = logging.getLogger("relaydesk-agent")
 
-DEFAULT_SUMMARY_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 MAX_TRANSCRIPT_INPUT_CHARS = 12000
 MAX_SUMMARY_OUTPUT_CHARS = 2000
 
@@ -68,9 +67,8 @@ async def summarize_call_transcript(
     if _is_empty_transcript(transcript):
         return EMPTY_TRANSCRIPT_MESSAGE
 
-    model = llm_instance or xai.responses.LLM(
-        model=os.getenv("CALL_SUMMARY_LLM_MODEL", DEFAULT_SUMMARY_LLM_MODEL),
-    )
+    summary_model = os.getenv("CALL_SUMMARY_LLM_MODEL", "").strip() or None
+    model = llm_instance or build_llm(model=summary_model)
     owns_llm = llm_instance is None
 
     chat_ctx = llm.ChatContext()

@@ -483,6 +483,7 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 
 | Script | Purpose | Example |
 |--------|---------|---------|
+| **`setup_infra.py`** | **First-time** new-account setup (NEW_INFRA_SETUP) | `python infra/scripts/setup_infra.py --init-tfvars` |
 | **`rebuild_infra.py`** | Destroy / provision / full rebuild (unattended) | `python infra/scripts/rebuild_infra.py rebuild --yes` |
 | **`deploy_api.py`** | Build, push, deploy API | `python infra/scripts/deploy_api.py` |
 | **`deploy_ui.py`** | Build, push, deploy UI | `python infra/scripts/deploy_ui.py` |
@@ -495,6 +496,20 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 | **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) | `python infra/scripts/cost_control.py status` |
 
 `deploy_common.py` is a shared library used by the deploy scripts — not run directly.
+
+### `setup_infra.py` (new AWS account)
+
+Automates [`NEW_INFRA_SETUP.md`](NEW_INFRA_SETUP.md) phases 0–8: Terraform apply, `.env` patching from outputs, SSM sync, RDS bootstrap, ECS deploy, optional Cognito admin approval.
+
+Prerequisites: filled `api/.env`, `ui/.env`, `voice-agent/.env` (vendor keys), `RDS_DB_PASSWORD`, and `terraform.tfvars` (or `--init-tfvars` + `setup.config.json`).
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourStrongRdsPassword"
+python infra/scripts/setup_infra.py --init-tfvars --dry-run --profile relaydesk-admin
+python infra/scripts/setup_infra.py --init-tfvars --profile relaydesk-admin
+```
+
+See `setup.config.example.json` for optional `github_org`, `ui_domain_name`, and `approve_admin`.
 
 ### `rebuild_infra.py` (destroy / provision / rebuild)
 

@@ -54,20 +54,22 @@ def build_tunnel_database_url(*, password: str, username: str, db_name: str) -> 
     )
 
 
-async def _run(*, database_url: str) -> None:
+async def _run(*, database_url: str, use_tunnel: bool = False) -> None:
     import asyncpg
 
     sys.path.insert(0, str(SCRIPTS_DIR))
     from db_runner import (
         DB_DIR,
         apply_schema,
+        asyncpg_connect_kwargs,
         drop_schema,
         run_sql_file,
         to_asyncpg_dsn,
     )
 
     dsn = to_asyncpg_dsn(database_url)
-    connection = await asyncpg.connect(dsn)
+    connect_kwargs = asyncpg_connect_kwargs(database_url, use_tunnel=use_tunnel)
+    connection = await asyncpg.connect(dsn, **connect_kwargs)
     try:
         await drop_schema(connection)
         await apply_schema(connection)
@@ -142,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("WARNING: Dropping all RelayDesk tables, recreating schema, loading Deepak seed.")
     try:
-        asyncio.run(_run(database_url=database_url))
+        asyncio.run(_run(database_url=database_url, use_tunnel=args.use_tunnel))
     except Exception as exc:
         print(f"Bootstrap failed: {exc}", file=sys.stderr)
         return 1

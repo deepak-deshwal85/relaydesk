@@ -123,6 +123,16 @@ output "cognito_ui_client_id" {
   value       = local.cognito_enabled ? local.cognito_ui_client_id : null
 }
 
+output "cognito_m2m_client_id" {
+  description = "Cognito M2M app client ID for the voice agent (client credentials)."
+  value       = local.cognito_enabled ? local.cognito_m2m_client_id : null
+}
+
+output "cognito_token_url" {
+  description = "OAuth2 token endpoint for voice-agent M2M client credentials."
+  value       = local.cognito_enabled ? local.cognito_token_url : null
+}
+
 output "cognito_hosted_ui_url" {
   description = "Cognito hosted UI sign-in URL."
   value = local.cognito_enabled ? (

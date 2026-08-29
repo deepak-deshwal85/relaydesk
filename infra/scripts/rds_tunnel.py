@@ -12,10 +12,14 @@ Usage (from repo root):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
+import socket
 import subprocess
 import sys
+import time
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -71,6 +75,78 @@ def resolve_rds_host(terraform_dir: Path, explicit: str | None) -> str:
     if explicit:
         return explicit.strip()
     return terraform_output_value(terraform_outputs(terraform_dir), "rds_endpoint")
+
+
+def port_is_open(host: str, port: int, *, timeout_s: float = 2) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
+
+
+def wait_for_port(host: str, port: int, *, timeout_s: int = 120) -> None:
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if port_is_open(host, port):
+            return
+        time.sleep(2)
+    raise RuntimeError(f"Timed out waiting for {host}:{port}")
+
+
+@contextlib.contextmanager
+def rds_tunnel_context(
+    *,
+    profile: str,
+    region: str,
+    terraform_dir: Path,
+    local_port: int = DEFAULT_LOCAL_PORT,
+    instance_id: str | None = None,
+    rds_host: str | None = None,
+) -> Iterator[None]:
+    """Start an RDS SSM port-forward if localhost:local_port is not already open."""
+    if port_is_open("127.0.0.1", local_port):
+        yield
+        return
+
+    remote_host = resolve_rds_host(terraform_dir, rds_host)
+    target_instance = resolve_instance_id(
+        profile=profile,
+        region=region,
+        explicit=instance_id,
+    )
+
+    print(f"Starting RDS tunnel via {target_instance} -> 127.0.0.1:{local_port}")
+    proc = subprocess.Popen(
+        [
+            "aws",
+            "ssm",
+            "start-session",
+            "--profile",
+            profile,
+            "--region",
+            region,
+            "--target",
+            target_instance,
+            "--document-name",
+            "AWS-StartPortForwardingSessionToRemoteHost",
+            "--parameters",
+            f"host={remote_host},portNumber=5432,localPortNumber={local_port}",
+        ],
+        env=_aws_env(),
+    )
+    try:
+        wait_for_port("127.0.0.1", local_port)
+        print(f"RDS tunnel ready on 127.0.0.1:{local_port}")
+        yield
+    finally:
+        print("Stopping RDS tunnel")
+        proc.terminate()
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
 
 
 def resolve_instance_id(

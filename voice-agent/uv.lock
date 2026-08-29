@@ -1081,6 +1081,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+assemblyai = [
+    { name = "livekit-plugins-assemblyai" },
+]
 codecs = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
@@ -1097,9 +1100,6 @@ silero = [
 ]
 turn-detector = [
     { name = "livekit-plugins-turn-detector" },
-]
-xai = [
-    { name = "livekit-plugins-xai" },
 ]
 
 [[package]]
@@ -1205,15 +1205,15 @@ wheels = [
 ]
 
 [[package]]
-name = "livekit-plugins-cartesia"
+name = "livekit-plugins-assemblyai"
 version = "1.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/87/5d/a7483ada58505b8f98954c33c050a416db33e220d4149590210a22be5e36/livekit_plugins_cartesia-1.6.3.tar.gz", hash = "sha256:5b7f370cf3ddc9026844ed8471cf1488353cf05e2857ed83fc5ce9fc97d8780f", size = 18192, upload-time = "2026-06-22T22:24:56.247Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/81/1d3c077f9092714d67cdc91a934c4bf5e7e81c5a0058a2d0f2ddf13237c5/livekit_plugins_assemblyai-1.6.3.tar.gz", hash = "sha256:77dbc2faffbf746dc593fecd949994a7c1f8925965a443d5946dc7b2969516de", size = 12071, upload-time = "2026-06-22T22:24:41.248Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/8e/76574e98f8271a5c88c47eb7ed9a08407030d184a785aa4384cc0ace0f85/livekit_plugins_cartesia-1.6.3-py3-none-any.whl", hash = "sha256:5131e08e3fb835e2e71c0ea5fadb51b611d4fa181e7bd1e39c3e2eca21f639cf", size = 25532, upload-time = "2026-06-22T22:24:54.819Z" },
+    { url = "https://files.pythonhosted.org/packages/19/4c/d032590a97f58144c09899c432d422e94cda3120f0f5126b1b10ba878d70/livekit_plugins_assemblyai-1.6.3-py3-none-any.whl", hash = "sha256:94a039cd8655dcf4ef783625ce2b187e06a66fca6d6373953a516c858b46dc6d", size = 12206, upload-time = "2026-06-22T22:24:39.92Z" },
 ]
 
 [[package]]
@@ -1293,18 +1293,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/81/d2/8b21c9886d99af78be627ff34e4a9ebfaa479088c74d662cae445f441b5e/livekit_plugins_turn_detector-1.6.3.tar.gz", hash = "sha256:07fa7f51de7cd650c449784d70193ded284448fbd97a70a3cf6a055485a19729", size = 7400, upload-time = "2026-06-22T22:26:43.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/86/edaa5b8b5b9acf86d1f91b739cb82dd3d65211c52e90b4d1691ec579810a/livekit_plugins_turn_detector-1.6.3-py3-none-any.whl", hash = "sha256:f6ecee48c4c717726e8c716c5f8222d97927097d45429bdbcc8edae7a445c513", size = 10456, upload-time = "2026-06-22T22:26:42.206Z" },
-]
-
-[[package]]
-name = "livekit-plugins-xai"
-version = "1.6.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "livekit-agents", extra = ["openai"] },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/99/be/9f37b7dd0d1d570e7f9390a757d88d95b8937689fead6e4934f8eb7954a7/livekit_plugins_xai-1.6.3.tar.gz", hash = "sha256:3ea3d4ab7e48c820d28a1d6d923d4b88bc021b20bfd106c2ec1b890314cf8f82", size = 12691, upload-time = "2026-06-22T22:26:46.798Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/3d/878f0c96486713fdaab673812a6f8e221d3553708201a3a5ec727bd3b1af/livekit_plugins_xai-1.6.3-py3-none-any.whl", hash = "sha256:c4391825ddaf0e13a5f3649146ef7a25eb126802c37833821815cf2e4cf3dacd", size = 16739, upload-time = "2026-06-22T22:26:45.708Z" },
 ]
 
 [[package]]
@@ -2723,11 +2711,12 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
-    { name = "livekit-agents", extra = ["silero", "turn-detector", "xai"] },
+    { name = "livekit-agents", extra = ["assemblyai", "openai", "silero", "turn-detector"] },
     { name = "livekit-plugins-ai-coustics" },
-    { name = "livekit-plugins-cartesia" },
+    { name = "livekit-plugins-assemblyai" },
     { name = "livekit-plugins-deepgram" },
     { name = "livekit-plugins-noise-cancellation" },
+    { name = "livekit-plugins-openai" },
     { name = "python-dotenv" },
     { name = "python-handlebars" },
     { name = "tzdata" },
@@ -2743,11 +2732,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
-    { name = "livekit-agents", extras = ["silero", "turn-detector", "xai"], specifier = "~=1.5" },
+    { name = "livekit-agents", extras = ["assemblyai", "openai", "silero", "turn-detector"], specifier = "~=1.6" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.2" },
-    { name = "livekit-plugins-cartesia", specifier = "~=1.5" },
-    { name = "livekit-plugins-deepgram", specifier = "~=1.5" },
+    { name = "livekit-plugins-assemblyai", specifier = "~=1.6" },
+    { name = "livekit-plugins-deepgram", specifier = "~=1.6" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2" },
+    { name = "livekit-plugins-openai", specifier = "~=1.6" },
     { name = "python-dotenv" },
     { name = "python-handlebars" },
     { name = "tzdata", specifier = ">=2024.1" },

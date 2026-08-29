@@ -9,11 +9,12 @@ description = "RelayDesk LiveKit voice agent with scheduling and RAG client"
 requires-python = ">=3.10"
 
 dependencies = [
-    "livekit-agents[silero,turn-detector,xai]~=1.5",
+    "livekit-agents[assemblyai,openai,silero,turn-detector]~=1.6",
     "livekit-plugins-ai-coustics~=0.2",
     "livekit-plugins-noise-cancellation~=0.2",
-    "livekit-plugins-deepgram~=1.5",
-    "livekit-plugins-cartesia~=1.5",
+    "livekit-plugins-deepgram~=1.6",
+    "livekit-plugins-openai~=1.6",
+    "livekit-plugins-assemblyai~=1.6",
     "python-dotenv",
     "python-handlebars",
     "tzdata>=2024.1",

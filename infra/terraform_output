@@ -1,0 +1,79 @@
+acm_dns_validation_records = tolist([
+  {
+    "name" = "_08f952276a060974e5935705a3935796.relaydesk.uk."
+    "type" = "CNAME"
+    "value" = "_e3007aa71ae0a087e1ab82aa690d78af.jkddzztszm.acm-validations.aws."
+  },
+])
+alb_dns_name = "relaydesk-prod-api-387892839.ap-south-1.elb.amazonaws.com"   
+api_alb_dns_name = "relaydesk-prod-api-387892839.ap-south-1.elb.amazonaws.com"
+api_internal_dns = "api.relaydesk.local"
+aws_account_id = "646605541675"
+billing_dashboard_name = "relaydesk-prod-billing"
+billing_dashboard_url = "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=relaydesk-prod-billing"
+cloudflare_dns_instructions = {
+  "acm_validation" = [
+    {
+      "name" = "_08f952276a060974e5935705a3935796.relaydesk.uk."
+      "proxy" = "DNS only (gray cloud) — required for ACM validation"        
+      "type" = "CNAME"
+      "value" = "_e3007aa71ae0a087e1ab82aa690d78af.jkddzztszm.acm-validations.aws."
+    },
+  ]
+  "app_cname" = {
+    "name" = "relaydesk.uk"
+    "proxy" = "DNS only (gray cloud) recommended until HTTPS works; then Full (strict) SSL"
+    "type" = "CNAME"
+    "value" = "relaydesk-prod-api-387892839.ap-south-1.elb.amazonaws.com"    
+  }
+}
+cognito_callback_urls = tolist([
+  "http://localhost:3000/api/auth/callback/cognito",
+  "https://relaydesk.uk/api/auth/callback/cognito",
+])
+cognito_hosted_ui_url = "https://relaydesk-prod.auth.ap-south-1.amazoncognito.com/login?client_id=55o9e1lb8kfo499ej1evpjh0hs&response_type=code&scope=email+openid+profile+relaydesk-api/access&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback%2Fcognito"
+cognito_issuer = "https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_x2VFKzV3Q"
+cognito_production_sso_ready = true
+cognito_role_groups = {
+  "admin" = "relaydesk-admins"
+  "approved" = "approved-clients"
+  "guest" = "guest-clients"
+}
+cognito_ui_client_id = "55o9e1lb8kfo499ej1evpjh0hs"
+cognito_user_pool_id = "ap-south-1_x2VFKzV3Q"
+cost_explorer_url = "https://console.aws.amazon.com/cost-management/home#/cost-explorer"
+ecr_api_repository_url = "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-api"
+ecr_ui_repository_url = "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-ui"
+ecr_voice_agent_repository_url = "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-voice-agent"
+ecs_api_asg_name = "relaydesk-prod-ecs-api"
+ecs_cluster_name = "relaydesk-prod"
+ecs_service_api_name = "relaydesk-prod-api"
+ecs_service_ui_name = "relaydesk-prod-ui"
+ecs_service_voice_agent_name = "relaydesk-prod-voice-agent"
+ecs_voice_asg_name = "relaydesk-prod-ecs-voice"
+github_actions_role_arn = "arn:aws:iam::646605541675:role/relaydesk-prod-github-actions"
+monthly_budget_name = "relaydesk-prod-monthly"
+rds_database_name = "relaydesk"
+rds_endpoint = "relaydesk-prod-postgres.cl0ie2gy03wz.ap-south-1.rds.amazonaws.com"
+rds_instance_identifier = "relaydesk-prod-postgres"
+rds_master_username = "relaydesk_admin"
+rds_port = 5432
+ssm_api_parameter_names = [
+  "/relaydesk/prod/api/OPENAI_API_KEY",
+  "/relaydesk/prod/api/DATABASE_URL",
+  "/relaydesk/prod/api/QDRANT_API_KEY",
+  "/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT",
+  "/relaydesk/prod/api/LIVEKIT_URL",
+  "/relaydesk/prod/api/LIVEKIT_API_KEY",
+  "/relaydesk/prod/api/LIVEKIT_API_SECRET",
+  "/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+]
+ssm_cognito_parameter_names = [
+  "/relaydesk/prod/cognito/GOOGLE_CLIENT_ID",
+  "/relaydesk/prod/cognito/GOOGLE_CLIENT_SECRET",
+]
+ui_domain_name = "relaydesk.uk"
+ui_url = "https://relaydesk.uk"
+voice_agent_rag_api_base_url = "http://api.relaydesk.local:8090"
+
+Swati@DESKTOP-UKFH3VV MINGW64 /c/Relaydesk/relaydesk/infra/terraform (main)  

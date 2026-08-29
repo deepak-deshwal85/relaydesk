@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import asyncpg
 from dotenv import load_dotenv
@@ -38,6 +39,20 @@ def to_asyncpg_dsn(database_url: str) -> str:
     if database_url.startswith("postgresql+asyncpg://"):
         return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
     return database_url
+
+
+def asyncpg_connect_kwargs(database_url: str, *, use_tunnel: bool = False) -> dict:
+    """Return asyncpg.connect kwargs. RDS requires SSL even via SSM port-forward."""
+    hostname = urlparse(database_url).hostname or ""
+    if not use_tunnel and hostname in {"", "localhost", "127.0.0.1"}:
+        return {}
+
+    import ssl
+
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    return {"ssl": ssl_context}
 
 
 def split_sql_statements(sql_text: str) -> list[str]:

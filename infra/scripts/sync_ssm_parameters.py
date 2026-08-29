@@ -17,6 +17,9 @@ Usage:
 
   # Sync voice-agent Cognito M2M secret from Terraform state:
   python infra/scripts/sync_ssm_parameters.py --only COGNITO_CLIENT_SECRET --from-terraform
+
+  # Patch local voice-agent/.env when Terraform hides the secret:
+  python infra/scripts/patch_voice_cognito_secret.py --from-cognito-api --profile relaydesk-admin
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = Path(__file__).resolve().parent
 DEFAULT_PROPERTIES = SCRIPTS_DIR / "env.properties"
 DEFAULT_TERRAFORM_DIR = REPO_ROOT / "infra" / "terraform"
@@ -49,9 +53,9 @@ VOICE_AGENT_SECRET_KEYS = [
     "LIVEKIT_URL",
     "LIVEKIT_API_KEY",
     "LIVEKIT_API_SECRET",
-    "XAI_API_KEY",
+    "ASSEMBLYAI_API_KEY",
+    "DEEPSEEK_API_KEY",
     "DEEPGRAM_API_KEY",
-    "CARTESIA_API_KEY",
     "CALCOM_API_KEY",
     "COGNITO_CLIENT_SECRET",
 ]
@@ -162,24 +166,29 @@ def cognito_voice_secret_from_terraform(
     terraform_dir: Path,
     resource: str,
 ) -> str:
-    result = subprocess.run(
-        ["terraform", "state", "show", resource],
-        cwd=str(terraform_dir),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    match = re.search(
-        r'^\s*client_secret\s*=\s*"(.*)"\s*$',
-        result.stdout,
-        re.MULTILINE,
-    )
-    if not match:
-        raise RuntimeError("Could not find client_secret in terraform state")
-    secret = match.group(1)
-    if not secret or secret == "CHANGEME":
-        raise RuntimeError("client_secret in terraform state is empty or placeholder")
-    return secret
+    stdout = ""
+    for extra in (["-show-sensitive"], []):
+        cmd = ["terraform", "state", "show", *extra, resource]
+        result = subprocess.run(
+            cmd,
+            cwd=str(terraform_dir),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            continue
+        stdout = result.stdout or ""
+        match = re.search(
+            r'^\s*client_secret\s*=\s*"(.*)"\s*$',
+            stdout,
+            re.MULTILINE,
+        )
+        if match:
+            secret = match.group(1)
+            if secret and secret not in {"CHANGEME", "(sensitive value)"}:
+                return secret
+    raise RuntimeError("Could not find client_secret in terraform state")
 
 
 def put_parameter(
@@ -238,13 +247,18 @@ def write_env_properties(path: Path, values: dict[str, str]) -> None:
     print(f"wrote {path}")
 
 
-def upload_targets_for_key(key: str, *, prefixes: dict[str, str]) -> list[tuple[str, str]]:
+def upload_targets_for_key(
+    key: str,
+    *,
+    prefixes: dict[str, str],
+    voice_only: bool = False,
+) -> list[tuple[str, str]]:
     targets: list[tuple[str, str]] = []
     if key in API_SECRET_KEYS:
         targets.append((prefixes["api"], key))
     if key in VOICE_AGENT_SECRET_KEYS:
         targets.append((prefixes["voice"], key))
-    if key in UI_SECRET_KEYS:
+    if key in UI_SECRET_KEYS and not (voice_only and key == "COGNITO_CLIENT_SECRET"):
         targets.append((prefixes["ui"], key))
     if key in COGNITO_SECRET_KEYS:
         targets.append((prefixes["cognito"], key))
@@ -271,7 +285,11 @@ def upload_key(
             print(f"invalid DATABASE_URL: {exc}", file=sys.stderr)
             return 1
 
-    targets = upload_targets_for_key(key, prefixes=prefixes)
+    targets = upload_targets_for_key(
+        key,
+        prefixes=prefixes,
+        voice_only=(key == "COGNITO_CLIENT_SECRET"),
+    )
     if not targets:
         print(f"Unknown parameter key: {key}", file=sys.stderr)
         return 1
@@ -290,8 +308,11 @@ def upload_key(
 
 
 def upload_all(
-    properties: dict[str, str],
     *,
+    api_properties: dict[str, str],
+    voice_properties: dict[str, str],
+    ui_properties: dict[str, str],
+    fallback_properties: dict[str, str],
     prefixes: dict[str, str],
     region: str,
     profile: str | None,
@@ -301,7 +322,7 @@ def upload_all(
     errors = 0
 
     for key in API_SECRET_KEYS:
-        value = properties.get(key, "").strip()
+        value = api_properties.get(key, "").strip()
         if not value:
             missing.append(ssm_name(prefixes["api"], key))
             continue
@@ -309,8 +330,10 @@ def upload_all(
             try:
                 validate_database_url(value)
             except ValueError as exc:
-                errors += 1
-                print(f"invalid {prefixes['api']}/DATABASE_URL: {exc}", file=sys.stderr)
+                print(
+                    f"skipping {prefixes['api']}/DATABASE_URL ({exc})",
+                    file=sys.stderr,
+                )
                 continue
         if not put_parameter(
             name=ssm_name(prefixes["api"], key),
@@ -322,7 +345,7 @@ def upload_all(
             errors += 1
 
     for key in VOICE_AGENT_SECRET_KEYS:
-        value = properties.get(key, "").strip()
+        value = voice_properties.get(key, "").strip()
         if not value:
             missing.append(ssm_name(prefixes["voice"], key))
             continue
@@ -336,7 +359,7 @@ def upload_all(
             errors += 1
 
     for key in UI_SECRET_KEYS:
-        value = properties.get(key, "").strip()
+        value = ui_properties.get(key, "").strip()
         if not value:
             missing.append(ssm_name(prefixes["ui"], key))
             continue
@@ -349,8 +372,10 @@ def upload_all(
         ):
             errors += 1
 
+    cognito_properties = merge_sources(fallback_properties, api_properties, ui_properties)
+
     for key in COGNITO_SECRET_KEYS:
-        value = properties.get(key, "").strip()
+        value = cognito_properties.get(key, "").strip()
         if not value:
             continue
         if not put_parameter(
@@ -411,6 +436,14 @@ def main() -> int:
         help=(
             "With --only COGNITO_CLIENT_SECRET: read voice M2M secret "
             "from Terraform state"
+        ),
+    )
+    parser.add_argument(
+        "--patch-voice-env",
+        action="store_true",
+        help=(
+            "With --only COGNITO_CLIENT_SECRET --from-terraform: write secret "
+            "to voice-agent/.env instead of uploading to SSM"
         ),
     )
     parser.add_argument(
@@ -494,6 +527,16 @@ def main() -> int:
             except (subprocess.CalledProcessError, RuntimeError) as exc:
                 print(str(exc), file=sys.stderr)
                 return 1
+            if args.patch_voice_env:
+                sys.path.insert(0, str(SCRIPT_DIR))
+                from setup_common import set_env_value
+
+                voice_env = Path(args.voice_env).resolve()
+                if set_env_value(voice_env, "COGNITO_CLIENT_SECRET", value):
+                    print(f"patched COGNITO_CLIENT_SECRET in {voice_env}")
+                else:
+                    print(f"COGNITO_CLIENT_SECRET unchanged in {voice_env}")
+                return 0
             return upload_key(
                 key,
                 value,
@@ -529,7 +572,10 @@ def main() -> int:
         return 1
 
     return upload_all(
-        properties,
+        api_properties=parse_env_file(args.api_env),
+        voice_properties=parse_env_file(args.voice_env),
+        ui_properties=parse_env_file(args.ui_env),
+        fallback_properties=properties,
         prefixes=prefixes,
         region=args.region,
         profile=args.profile,

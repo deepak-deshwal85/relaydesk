@@ -96,9 +96,9 @@ locals {
     "LIVEKIT_URL",
     "LIVEKIT_API_KEY",
     "LIVEKIT_API_SECRET",
-    "XAI_API_KEY",
+    "ASSEMBLYAI_API_KEY",
+    "DEEPSEEK_API_KEY",
     "DEEPGRAM_API_KEY",
-    "CARTESIA_API_KEY",
     "CALCOM_API_KEY",
   ]
 

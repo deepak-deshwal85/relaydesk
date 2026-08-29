@@ -5,35 +5,34 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from tts_config import (
-    DEFAULT_CARTESIA_TTS_MODEL,
-    DEFAULT_CARTESIA_TTS_VOICE,
-    build_cartesia_tts,
-)
+from voice_pipeline_config import DEFAULT_DEEPGRAM_TTS_MODEL, build_tts
 
 
-def test_build_cartesia_tts_uses_defaults():
+def test_build_tts_uses_deepgram_aura_defaults():
     with patch.dict(
         os.environ,
-        {"CARTESIA_API_KEY": "test-cartesia-key"},
+        {"DEEPGRAM_API_KEY": "test-deepgram-key"},
         clear=True,
-    ):
-        tts = build_cartesia_tts()
-    assert tts._opts.model == DEFAULT_CARTESIA_TTS_MODEL
-    assert tts._opts.voice == DEFAULT_CARTESIA_TTS_VOICE
-    assert tts._opts.language == "en"
+    ), patch("voice_pipeline_config.deepgram.TTS") as mock_tts:
+        tts = build_tts()
+    mock_tts.assert_called_once_with(
+        model=DEFAULT_DEEPGRAM_TTS_MODEL,
+        api_key="test-deepgram-key",
+    )
+    assert tts is mock_tts.return_value
 
 
-def test_build_cartesia_tts_reads_env_overrides():
+def test_build_tts_reads_env_override():
     with patch.dict(
         os.environ,
         {
-            "CARTESIA_API_KEY": "test-cartesia-key",
-            "CARTESIA_TTS_MODEL": "sonic-2",
-            "CARTESIA_TTS_VOICE": "voice-123",
+            "DEEPGRAM_API_KEY": "test-deepgram-key",
+            "DEEPGRAM_TTS_MODEL": "aura-2-thalia-en",
         },
         clear=True,
-    ):
-        tts = build_cartesia_tts()
-    assert tts._opts.model == "sonic-2"
-    assert tts._opts.voice == "voice-123"
+    ), patch("voice_pipeline_config.deepgram.TTS") as mock_tts:
+        build_tts()
+    mock_tts.assert_called_once_with(
+        model="aura-2-thalia-en",
+        api_key="test-deepgram-key",
+    )

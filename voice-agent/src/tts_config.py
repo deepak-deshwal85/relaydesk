@@ -1,20 +1,8 @@
-import os
+"""Backward-compatible TTS helper — delegates to Deepgram Aura in voice_pipeline_config."""
 
-from livekit.plugins import cartesia
+from voice_pipeline_config import build_tts as build_deepgram_tts
 
-DEFAULT_CARTESIA_TTS_MODEL = "sonic-3.5"
-# Cartesia plugin default English voice (see livekit.plugins.cartesia.TTS).
-DEFAULT_CARTESIA_TTS_VOICE = "f786b574-daa5-4673-aa0c-cbe3e8534c02"
+# Legacy import name used by older tests/docs.
+build_cartesia_tts = build_deepgram_tts
 
-
-def build_cartesia_tts(
-    *,
-    model: str | None = None,
-    voice: str | None = None,
-    language: str = "en",
-) -> cartesia.TTS:
-    return cartesia.TTS(
-        model=model or os.getenv("CARTESIA_TTS_MODEL", DEFAULT_CARTESIA_TTS_MODEL),
-        voice=voice or os.getenv("CARTESIA_TTS_VOICE", DEFAULT_CARTESIA_TTS_VOICE),
-        language=language,
-    )
+__all__ = ["build_cartesia_tts", "build_deepgram_tts"]

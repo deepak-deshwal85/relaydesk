@@ -1,0 +1,18 @@
+{
+  "aws_profile": "relaydesk-admin",
+  "aws_region": "ap-south-1",
+  "terraform_dir": "infra/terraform",
+
+  "github_org": "deepak-deshwal85",
+  "github_repo": "relaydesk",
+  "ui_domain_name": "relaydesk.uk",
+
+  "init_tfvars": true,
+  "init_env": false,
+
+  "approve_admin": {
+    "email": "deepakdeshwal85@gmail.com",
+    "role": "relaydesk-admins",
+    "business_phone": "+911171366880"
+  }
+}

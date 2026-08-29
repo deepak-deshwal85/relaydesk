@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +9,8 @@ from app.db.postgres.models import CallJobRow, ClientRow, ConsumerRow
 from app.domain.client_models import Client
 from app.domain.consumer_models import normalize_email, normalize_phone_number
 from app.domain.phone_validation import normalize_optional_phone_number
+
+logger = logging.getLogger("relaydesk-api")
 
 
 class ClientRepository:
@@ -26,14 +30,24 @@ class ClientRepository:
 
     async def get_by_business_phone(self, phone_number: str) -> Client | None:
         normalized = normalize_phone_number(phone_number)
-        row = (
+        rows = (
             await self._session.execute(
-                select(ClientRow).where(
-                    ClientRow.client_business_phone_number == normalized
-                )
+                select(ClientRow)
+                .where(ClientRow.client_business_phone_number == normalized)
+                .order_by(ClientRow.id.asc())
+                .limit(2)
             )
-        ).scalar_one_or_none()
-        return self._to_domain(row) if row else None
+        ).scalars().all()
+        if not rows:
+            return None
+        if len(rows) > 1:
+            logger.warning(
+                "multiple clients share business phone %s; using client_id=%s email=%s",
+                normalized,
+                rows[0].id,
+                rows[0].client_email_id,
+            )
+        return self._to_domain(rows[0])
 
     async def get_by_email(self, client_email_id: str) -> Client | None:
         row = (

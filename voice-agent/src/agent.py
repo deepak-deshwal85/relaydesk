@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from uuid import UUID
@@ -18,7 +19,7 @@ from livekit.agents import (
     llm,
     room_io,
 )
-from livekit.plugins import ai_coustics, deepgram, xai
+from livekit.plugins import ai_coustics
 
 from agent_instructions import build_conversation_flow_instructions
 from call_summary_builder import (
@@ -50,8 +51,8 @@ from scheduling_tools import (
 )
 from session_greeting import greet_caller
 from sip_utils import extract_routing_phone_number
-from tts_config import build_cartesia_tts
 from turn_handling_config import build_turn_handling_options
+from voice_pipeline_config import build_llm, build_stt, build_tts
 
 logger = logging.getLogger("relaydesk-agent")
 
@@ -60,11 +61,38 @@ load_dotenv(".env")
 
 DEFAULT_DEV_PHONE_NUMBER = "911171366880"
 SIP_PARTICIPANT_WAIT_SECONDS = 5.0
-STT_MODEL = "nova-3"
-DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 DEFAULT_MEETING_TIMEZONE = os.getenv("MEETING_TIMEZONE", "Asia/Kolkata")
 DEFAULT_SESSION_CLOSE_TRANSCRIPT_TIMEOUT = 5.0
 AGENT_MODE = "relaydesk-pipeline"
+
+
+def _truthy_env(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_console_mode() -> bool:
+    return any(arg == "console" for arg in sys.argv[1:])
+
+
+def build_room_options() -> room_io.RoomOptions:
+    """Room audio I/O options for AgentSession.start().
+
+    ai_coustics is tuned for SIP/telephony echo. In local console mode it can
+    prevent microphone audio from reaching STT on some Windows devices, so we
+    skip it unless explicitly enabled.
+    """
+    force_enhancement = _truthy_env("ENABLE_AUDIO_ENHANCEMENT")
+    if force_enhancement or (not _is_console_mode() and not _truthy_env("DISABLE_AUDIO_ENHANCEMENT")):
+        return room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=ai_coustics.audio_enhancement(
+                    model=ai_coustics.EnhancerModel.QUAIL_VF_S,
+                ),
+            ),
+        )
+    reason = "console mode" if _is_console_mode() else "DISABLE_AUDIO_ENHANCEMENT"
+    logger.info("using raw microphone input without ai_coustics (%s)", reason)
+    return room_io.RoomOptions()
 
 
 def build_agent_instructions(client_config: ClientConfig) -> str:
@@ -402,7 +430,7 @@ async def entrypoint(ctx: JobContext) -> None:
         tool_names,
     )
 
-    tts = build_cartesia_tts()
+    tts = build_tts()
     tts.prewarm()
 
     rag_warmup_task: asyncio.Task[None] | None = None
@@ -415,13 +443,8 @@ async def entrypoint(ctx: JobContext) -> None:
         )
 
     session = AgentSession(
-        stt=deepgram.STT(
-            model=os.getenv("STT_MODEL", STT_MODEL),
-            language="en",
-        ),
-        llm=xai.responses.LLM(
-            model=os.getenv("XAI_LLM_MODEL", DEFAULT_LLM_MODEL),
-        ),
+        stt=build_stt(),
+        llm=build_llm(),
         tts=tts,
         tools=session_tools,
         turn_handling=build_turn_handling_options(client_config),
@@ -458,13 +481,7 @@ async def entrypoint(ctx: JobContext) -> None:
     await session.start(
         agent=default_agent,
         room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                noise_cancellation=ai_coustics.audio_enhancement(
-                    model=ai_coustics.EnhancerModel.QUAIL_VF_S,
-                ),
-            ),
-        ),
+        room_options=build_room_options(),
     )
 
 

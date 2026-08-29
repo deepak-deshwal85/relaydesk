@@ -1,6 +1,7 @@
 -- Seed data for Deepak dev/bootstrap environment.
 -- Requires schema.sql applied first. Drops UNIQUE on business phone so two
 -- client accounts can share one outbound line (911171366880).
+-- Voice-agent resolve-by-phone picks the lowest client id when duplicates exist.
 
 ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_client_business_phone_number_key;
 

@@ -11,7 +11,7 @@ LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TT
 ### What it does
 
 - Connects to **LiveKit Cloud** for real-time audio rooms and SIP telephony.
-- Uses **Deepgram** (STT), **xAI** (LLM), **Cartesia** (TTS).
+- Uses **AssemblyAI** (STT), **DeepSeek V4 Flash** (LLM), **Deepgram Aura-2** (TTS).
 - Loads per-client config from the **RelayDesk API** (`GET /v1/voice-agent-config/resolve-by-phone`) at call start.
 - Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
 - Optional **Cal.com** tools for meeting scheduling.
@@ -56,9 +56,12 @@ cp .env.example .env
 | `LIVEKIT_URL` | Yes | `wss://<project>.livekit.cloud` |
 | `LIVEKIT_API_KEY` | Yes | LiveKit API key |
 | `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
-| `XAI_API_KEY` | Yes | xAI LLM |
-| `DEEPGRAM_API_KEY` | Yes | Speech-to-text |
-| `CARTESIA_API_KEY` | Yes | Text-to-speech |
+| `ASSEMBLYAI_API_KEY` | Yes | Speech-to-text (default: `universal-streaming-english`) |
+| `DEEPSEEK_API_KEY` | Yes | LLM (`deepseek-v4-flash`) |
+| `DEEPGRAM_API_KEY` | Yes | Text-to-speech (Aura-2) |
+| `STT_MODEL` | No | AssemblyAI model (default `universal-streaming-english`) |
+| `LLM_MODEL` | No | DeepSeek model (default `deepseek-v4-flash`) |
+| `DEEPGRAM_TTS_MODEL` | No | Aura voice (default `aura-2-andromeda-en`) |
 | `CALCOM_API_KEY` | Scheduling | Cal.com API key |
 | `AGENT_NAME` | Yes | Must match LiveKit agent registration |
 | `CLIENT_PHONE_OVERRIDE` | Local | e.g. `+911171366880` — simulates caller phone |
@@ -68,6 +71,16 @@ cp .env.example .env
 | `COGNITO_CLIENT_ID` | Production | M2M client ID |
 | `COGNITO_CLIENT_SECRET` | Production | M2M client secret |
 | `COGNITO_SCOPE` | Production | `relaydesk-api/access` |
+
+**Local dev auth:** When calling the API at `http://127.0.0.1:8090`, either:
+
+1. **Production-like OAuth (default):** Set `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, and `COGNITO_TOKEN_URL` in `.env`. If Cognito returns `invalid_client`, refresh the M2M secret:
+   ```bash
+   python infra/scripts/patch_voice_cognito_secret.py --from-cognito-api --profile relaydesk-admin
+   ```
+2. **Skip OAuth:** Set `OAUTH_DISABLED=true` in `api/.env` and remove or comment out `COGNITO_*` in `voice-agent/.env`.
+
+Also ensure the local API is running and (for RDS) the SSM tunnel is up before `uv run python src/agent.py console`.
 
 ### Voice agent configuration
 
@@ -89,7 +102,16 @@ uv run python src/agent.py download-files
 
 # Local microphone/speaker test
 uv run python src/agent.py console
+```
 
+**Console mic not working?** If the agent greets but ignores your speech, check logs for `AssemblyAI no messages received`. Common fixes:
+
+1. **Restart console** after pulling latest code — local `console` mode now skips ai_coustics (telephony echo processing that can block Windows mics).
+2. **Windows mic:** Settings → Privacy → Microphone → allow desktop apps; set the correct **default input device** in Sound settings.
+3. **Watch the level meter** in the console UI — bars should move when you speak.
+4. Force raw mic input anytime: `DISABLE_AUDIO_ENHANCEMENT=true` in `.env`.
+
+```bash
 # Connect to LiveKit Cloud (dev)
 uv run python src/agent.py dev
 ```
@@ -157,6 +179,7 @@ Run from `voice-agent/` unless noted.
 | Script | Purpose |
 |--------|---------|
 | [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync `voice-agent/.env` → SSM (`--only KEY` for one parameter) |
+| [`../infra/scripts/patch_voice_cognito_secret.py`](../infra/scripts/patch_voice_cognito_secret.py) | Fix local `COGNITO_CLIENT_SECRET` from Cognito API |
 
 ---
 

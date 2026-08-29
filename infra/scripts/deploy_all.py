@@ -66,7 +66,7 @@ def _deploy_sequential(
         print(f"\n{'=' * 60}\nDeploy {target.name}\n{'=' * 60}")
         _, error = _deploy_one(target, **kwargs)  # type: ignore[arg-type]
         if error:
-            print(f"\n✗ {target.name} deploy failed: {error}", file=sys.stderr)
+            print(f"FAIL {target.name} deploy failed: {error}", file=sys.stderr)
             return 1
     return 0
 
@@ -82,9 +82,9 @@ def _deploy_parallel(targets: list[DeployTarget], **kwargs: object) -> int:
             service, error = future.result()
             if error:
                 failed.append(service)
-                print(f"✗ {service} deploy failed: {error}", file=sys.stderr)
+                print(f"FAIL {service} deploy failed: {error}", file=sys.stderr)
             else:
-                print(f"✓ {service} deploy finished")
+                print(f"OK {service} deploy finished")
     return 1 if failed else 0
 
 
@@ -159,7 +159,7 @@ def main() -> int:
         code = _deploy_parallel(targets, **deploy_kwargs)
 
     if code == 0:
-        print("\n✓ All selected services deployed successfully")
+        print("\nAll selected services deployed successfully")
     return code
 
 
