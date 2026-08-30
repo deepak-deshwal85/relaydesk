@@ -84,6 +84,13 @@ def main() -> int:
         action="store_true",
         help="Fetch secret from Cognito API when Terraform state hides it",
     )
+    parser.add_argument(
+        "--sync-ssm",
+        action="store_true",
+        help="Upload secret to /relaydesk/prod/voice-agent/COGNITO_CLIENT_SECRET in SSM",
+    )
+    parser.add_argument("--project", default="relaydesk")
+    parser.add_argument("--environment", default="prod")
     args = parser.parse_args()
 
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -125,6 +132,31 @@ def main() -> int:
         print(f"patched COGNITO_CLIENT_SECRET in {voice_env}")
     else:
         print(f"COGNITO_CLIENT_SECRET already correct in {voice_env}")
+
+    if args.sync_ssm:
+        ssm_name = (
+            f"/{args.project}/{args.environment}/voice-agent/COGNITO_CLIENT_SECRET"
+        )
+        cmd = [
+            "aws",
+            "ssm",
+            "put-parameter",
+            "--name",
+            ssm_name,
+            "--value",
+            secret,
+            "--type",
+            "SecureString",
+            "--overwrite",
+            "--region",
+            args.region,
+            "--no-cli-pager",
+        ]
+        if args.profile:
+            cmd.extend(["--profile", args.profile])
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print(f"synced {ssm_name}")
+
     return 0
 
 
