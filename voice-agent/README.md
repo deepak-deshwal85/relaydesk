@@ -11,7 +11,7 @@ LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TT
 ### What it does
 
 - Connects to **LiveKit Cloud** for real-time audio rooms and SIP telephony.
-- Uses **AssemblyAI** (STT), **DeepSeek V4 Flash** (LLM), **Deepgram Aura-2** (TTS).
+- Uses **AssemblyAI Universal-3.5-Pro Realtime** + **DeepSeek V4 Flash** + **Deepgram Aura-1** by default (`VOICE_PROVIDER=legacy`). Set `VOICE_PROVIDER=sarvam` for Sarvam AI (Indian English / Indic languages).
 - Loads per-client config from the **RelayDesk API** (`GET /v1/voice-agent-config/resolve-by-phone`) at call start.
 - Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
 - Optional **Cal.com** tools for meeting scheduling.
@@ -56,12 +56,19 @@ cp .env.example .env
 | `LIVEKIT_URL` | Yes | `wss://<project>.livekit.cloud` |
 | `LIVEKIT_API_KEY` | Yes | LiveKit API key |
 | `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
-| `ASSEMBLYAI_API_KEY` | Yes | Speech-to-text (default: `universal-streaming-english`) |
-| `DEEPSEEK_API_KEY` | Yes | LLM (`deepseek-v4-flash`) |
-| `DEEPGRAM_API_KEY` | Yes | Text-to-speech (Aura-2) |
-| `STT_MODEL` | No | AssemblyAI model (default `universal-streaming-english`) |
-| `LLM_MODEL` | No | DeepSeek model (default `deepseek-v4-flash`) |
-| `DEEPGRAM_TTS_MODEL` | No | Aura voice (default `aura-2-andromeda-en`) |
+| `VOICE_PROVIDER` | No | `legacy` (default) or `sarvam` |
+| `SARVAM_API_KEY` | Sarvam | Required when `VOICE_PROVIDER=sarvam` |
+| `SARVAM_STT_MODEL` | No | Default `saaras:v3` |
+| `SARVAM_STT_LANGUAGE` | No | Default `en-IN` (also `hi-IN`, etc.) |
+| `SARVAM_LLM_MODEL` | No | Default `sarvam-30b` (faster). `sarvam-105b` adds latency (~10s+ first token). |
+| `SARVAM_TTS_MODEL` | No | Default `bulbul:v3` |
+| `SARVAM_TTS_SPEAKER` | No | Default `shubh` |
+| `ASSEMBLYAI_API_KEY` | Legacy | Required when `VOICE_PROVIDER=legacy` (default) |
+| `STT_MODEL` | No | Default `universal-3-5-pro` (Universal-3.5-Pro Realtime) |
+| `DEEPSEEK_API_KEY` | Legacy | Required when `VOICE_PROVIDER=legacy` (default) |
+| `LLM_MODEL` | No | Default `deepseek-v4-flash` (off-peak pricing is automatic) |
+| `DEEPGRAM_API_KEY` | Legacy | Required when `VOICE_PROVIDER=legacy` (default) |
+| `DEEPGRAM_TTS_MODEL` | No | Default `aura-asteria-en` (Aura-1) |
 | `CALCOM_API_KEY` | Scheduling | Cal.com API key |
 | `AGENT_NAME` | Yes | Must match LiveKit agent registration |
 | `CLIENT_PHONE_OVERRIDE` | Local | e.g. `+911171366880` — simulates caller phone |
@@ -104,12 +111,15 @@ uv run python src/agent.py download-files
 uv run python src/agent.py console
 ```
 
-**Console mic not working?** If the agent greets but ignores your speech, check logs for `AssemblyAI no messages received`. Common fixes:
+**Console mic not working?** On some Windows laptops the default PortAudio path captures silence even when the mic works in the browser (LiveKit Playground). Console mode now opens the **WASAPI** device in exclusive mode at native rate, resamples to 24 kHz mono, and disables console echo cancellation. If the level meter stays flat:
 
-1. **Restart console** after pulling latest code — local `console` mode now skips ai_coustics (telephony echo processing that can block Windows mics).
+1. **Close LiveKit Playground** while using console — exclusive mode cannot share the mic.
 2. **Windows mic:** Settings → Privacy → Microphone → allow desktop apps; set the correct **default input device** in Sound settings.
 3. **Watch the level meter** in the console UI — bars should move when you speak.
-4. Force raw mic input anytime: `DISABLE_AUDIO_ENHANCEMENT=true` in `.env`.
+4. Pick a device explicitly: `uv run python src/agent.py console --input-device "Microphone Array"`.
+5. Disable the WASAPI fix to use the old path: `DISABLE_CONSOLE_WASAPI=true` in `.env`.
+
+**Voice breaking / choppy audio?** Console logs showed the mic picking up the agent's own speech (echo), which triggered overlapping replies and TTS buffer flushes. The agent now filters echo transcripts (`AGENT_ECHO_FILTER_ENABLED=true` by default), requires 3+ words to interrupt the agent, and no longer blocks the LLM while a RAG filler phrase finishes playing.
 
 ```bash
 # Connect to LiveKit Cloud (dev)

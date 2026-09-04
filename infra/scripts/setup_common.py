@@ -39,9 +39,7 @@ REQUIRED_VOICE_KEYS = (
     "LIVEKIT_URL",
     "LIVEKIT_API_KEY",
     "LIVEKIT_API_SECRET",
-    "ASSEMBLYAI_API_KEY",
-    "DEEPSEEK_API_KEY",
-    "DEEPGRAM_API_KEY",
+    "SARVAM_API_KEY",
 )
 
 UI_COGNITO_TF_RESOURCE = "aws_cognito_user_pool_client.ui[0]"

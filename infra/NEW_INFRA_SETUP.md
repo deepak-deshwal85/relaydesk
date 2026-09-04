@@ -111,9 +111,8 @@ Collect API keys and endpoints. These are **not** created by Terraform.
 | **Qdrant Cloud** | API | `QDRANT_CLUSTER_ENDPOINT`, `QDRANT_API_KEY` |
 | **OpenAI** | API embeddings | `OPENAI_API_KEY` |
 | **LiveKit Cloud** | API outbound + voice agent | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, SIP trunk ID |
-| **AssemblyAI** | Voice agent STT | `ASSEMBLYAI_API_KEY` |
-| **DeepSeek** | Voice agent LLM | `DEEPSEEK_API_KEY` |
-| **Deepgram** | Voice agent TTS (Aura-2) | `DEEPGRAM_API_KEY` |
+| **Sarvam AI** | Optional voice stack (`VOICE_PROVIDER=sarvam`) | `SARVAM_API_KEY` |
+| **AssemblyAI / DeepSeek / Deepgram** | Default voice stack (`VOICE_PROVIDER=legacy`) | `ASSEMBLYAI_API_KEY`, `DEEPSEEK_API_KEY`, `DEEPGRAM_API_KEY` |
 | **Cal.com** | Voice agent scheduling | `CALCOM_API_KEY` |
 | **Domain DNS** | UI HTTPS | e.g. Cloudflare for `ui_domain_name` |
 

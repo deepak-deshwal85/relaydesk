@@ -1260,6 +1260,21 @@ wheels = [
 ]
 
 [[package]]
+name = "livekit-plugins-sarvam"
+version = "1.6.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs", "openai"] },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4c/49/6caa6bafc213bb3cb66832eef00b300c43b5bbe95a220d7906f7a649b0fb/livekit_plugins_sarvam-1.6.3.tar.gz", hash = "sha256:8f881f56c75f3fe27b64a5739876cf1f3fee83120dfcaf41e7b86ec20f88d520", size = 31665, upload-time = "2026-06-22T22:26:16.189Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/86/43d319f769413c75aafa620d1eb4fa11dc5fd8f954107052fb26a78d3c06/livekit_plugins_sarvam-1.6.3-py3-none-any.whl", hash = "sha256:43db9f4face334161ecb414a906acb0138f60e78968b69af9c52f5cd0d16673a", size = 34461, upload-time = "2026-06-22T22:26:15.117Z" },
+]
+
+[[package]]
 name = "livekit-plugins-silero"
 version = "1.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2717,6 +2732,7 @@ dependencies = [
     { name = "livekit-plugins-deepgram" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
+    { name = "livekit-plugins-sarvam" },
     { name = "python-dotenv" },
     { name = "python-handlebars" },
     { name = "tzdata" },
@@ -2738,6 +2754,7 @@ requires-dist = [
     { name = "livekit-plugins-deepgram", specifier = "~=1.6" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2" },
     { name = "livekit-plugins-openai", specifier = "~=1.6" },
+    { name = "livekit-plugins-sarvam", specifier = "~=1.6" },
     { name = "python-dotenv" },
     { name = "python-handlebars" },
     { name = "tzdata", specifier = ">=2024.1" },

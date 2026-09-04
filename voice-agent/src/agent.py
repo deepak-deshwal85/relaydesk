@@ -15,6 +15,7 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    StopResponse,
     cli,
     llm,
     room_io,
@@ -49,10 +50,12 @@ from scheduling_tools import (
     build_meeting_scheduling_instructions,
     build_scheduling_tools,
 )
+from console_audio import apply_windows_console_audio_patch
 from session_greeting import greet_caller
 from sip_utils import extract_routing_phone_number
 from turn_handling_config import build_turn_handling_options
-from voice_pipeline_config import build_llm, build_stt, build_tts
+from voice_echo_filter import is_likely_agent_echo, recent_assistant_text
+from voice_pipeline_config import build_llm, build_stt, build_tts, get_voice_provider
 
 logger = logging.getLogger("relaydesk-agent")
 
@@ -133,6 +136,24 @@ You are on a phone call. Follow these rules for natural speech:
 - Protect privacy."""
 
 
+def _rag_filler_enabled() -> bool:
+    return os.getenv("RAG_FILLER_ENABLED", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _echo_filter_enabled() -> bool:
+    return os.getenv("AGENT_ECHO_FILTER_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
 class DefaultAgent(Agent):
     def __init__(
         self,
@@ -154,6 +175,7 @@ class DefaultAgent(Agent):
         await greet_caller(
             self.session,
             greeting_instructions=self._client_config.greeting_message,
+            client_name=self._client_config.client_name,
         )
 
         if self._knowledge_retriever is None:
@@ -175,20 +197,25 @@ class DefaultAgent(Agent):
 
         user_text = extract_message_text(new_message.content)
 
+        if _echo_filter_enabled():
+            assistant_text = recent_assistant_text(self.chat_ctx)
+            agent_speaking = self.session.current_speech is not None
+            if is_likely_agent_echo(
+                user_text,
+                assistant_text,
+                agent_speaking=agent_speaking,
+            ):
+                logger.info(
+                    "ignoring likely agent-echo transcript (agent_speaking=%s): %r",
+                    agent_speaking,
+                    user_text,
+                )
+                raise StopResponse()
+
         # Skip RAG (and filler) for short confirmations and stop phrases.
         if not should_auto_search_user_text(user_text):
             return
 
-        # Speak a brief filler via TTS immediately — this runs in parallel with
-        # the RAG API call so the caller hears audio within ~200ms instead of
-        # waiting ~1.5s in silence.
-        filler_handle = self.session.say(
-            pick_filler_phrase(),
-            allow_interruptions=False,
-            add_to_chat_ctx=False,
-        )
-
-        # Run RAG while filler is playing.
         rag_task = asyncio.create_task(
             prefetch_uploaded_documents(
                 client_config=self._client_config,
@@ -199,12 +226,20 @@ class DefaultAgent(Agent):
             )
         )
 
-        # Wait for both filler and RAG to finish before returning so the LLM
-        # starts with full context and only after the filler has played out.
-        prefetched, _ = await asyncio.gather(rag_task, filler_handle.wait_for_playout())
+        if _rag_filler_enabled():
+            # Play filler in the background; do not block the LLM on playout.
+            # Waiting for filler + RAG serializes two TTS segments and caused
+            # "flush audio emitter due to slow audio generation" breaks in logs.
+            self.session.say(
+                pick_filler_phrase(),
+                allow_interruptions=True,
+                add_to_chat_ctx=False,
+            )
+
+        prefetched = await rag_task
 
         if prefetched is not None:
-            turn_ctx.add_message(role="developer", content=prefetched)
+            turn_ctx.add_message(role="system", content=prefetched)
 
 
 def build_session_tools(
@@ -424,10 +459,11 @@ async def entrypoint(ctx: JobContext) -> None:
         getattr(tool, "id", getattr(tool, "name", repr(tool))) for tool in session_tools
     ]
     logger.info(
-        "starting %s for %s with tools: %s",
+        "starting %s for %s with tools: %s (voice_provider=%s)",
         AGENT_MODE,
         client_config.client_name,
         tool_names,
+        get_voice_provider(),
     )
 
     tts = build_tts()
@@ -486,4 +522,5 @@ async def entrypoint(ctx: JobContext) -> None:
 
 
 if __name__ == "__main__":
+    apply_windows_console_audio_patch()
     cli.run_app(server)

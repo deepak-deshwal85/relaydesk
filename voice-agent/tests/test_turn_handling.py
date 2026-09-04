@@ -1,4 +1,5 @@
 import sys
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +11,7 @@ from client_config import ClientConfig
 from turn_handling_config import (
     DEFAULT_TURN_ENDPOINTING_ALPHA,
     DEFAULT_TURN_ENDPOINTING_MAX_DELAY,
+    DEFAULT_TURN_ENDPOINTING_MAX_DELAY_CONSOLE,
     DEFAULT_TURN_ENDPOINTING_MIN_DELAY,
     build_endpointing_options,
     build_interruption_options,
@@ -64,9 +66,11 @@ def test_build_endpointing_options_invalid_mode_falls_back(monkeypatch):
     assert options["mode"] == "dynamic"
 
 
-def test_build_interruption_options_defaults():
+def test_build_interruption_options_defaults(monkeypatch):
+    monkeypatch.setenv("VOICE_PROVIDER", "legacy")
     options = build_interruption_options()
     assert options["mode"] == "adaptive"
+    assert options["min_words"] == 3
     assert options["resume_false_interruption"] is True
     assert options["false_interruption_timeout"] == 2.0
 
@@ -109,6 +113,7 @@ def test_build_preemptive_generation_from_env(monkeypatch):
 def test_build_turn_handling_options_with_rag(mock_turn_detector, monkeypatch):
     monkeypatch.setenv("LIVEKIT_API_KEY", "test-key")
     monkeypatch.setenv("LIVEKIT_API_SECRET", "test-secret")
+    monkeypatch.setenv("VOICE_PROVIDER", "legacy")
 
     with patch(
         "turn_handling_config.requires_sync_turn_completion",
@@ -125,6 +130,7 @@ def test_build_turn_handling_options_with_rag(mock_turn_detector, monkeypatch):
 def test_build_turn_handling_options_without_rag(mock_turn_detector, monkeypatch):
     monkeypatch.setenv("LIVEKIT_API_KEY", "test-key")
     monkeypatch.setenv("LIVEKIT_API_SECRET", "test-secret")
+    monkeypatch.setenv("VOICE_PROVIDER", "legacy")
 
     with patch(
         "turn_handling_config.requires_sync_turn_completion",
@@ -134,3 +140,29 @@ def test_build_turn_handling_options_without_rag(mock_turn_detector, monkeypatch
 
     assert options["preemptive_generation"]["enabled"] is True
     assert options["preemptive_generation"]["preemptive_tts"] is False
+
+
+def test_build_endpointing_options_console_uses_longer_max_delay(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["agent.py", "console"])
+    options = build_endpointing_options()
+    assert options["max_delay"] == DEFAULT_TURN_ENDPOINTING_MAX_DELAY_CONSOLE
+
+
+def test_build_interruption_options_sarvam_uses_vad(monkeypatch):
+    monkeypatch.setenv("VOICE_PROVIDER", "sarvam")
+    options = build_interruption_options()
+    assert options["mode"] == "vad"
+
+
+def test_build_turn_handling_options_sarvam_uses_stt_turn_detection(monkeypatch):
+    monkeypatch.setenv("LIVEKIT_API_KEY", "test-key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "test-secret")
+    monkeypatch.setenv("VOICE_PROVIDER", "sarvam")
+
+    with patch(
+        "turn_handling_config.requires_sync_turn_completion",
+        return_value=False,
+    ):
+        options = build_turn_handling_options(_sample_client_config())
+
+    assert options["turn_detection"] == "stt"
