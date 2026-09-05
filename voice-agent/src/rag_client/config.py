@@ -26,7 +26,7 @@ def load_rag_settings() -> RagClientSettings:
         )
 
     return RagClientSettings(
-        max_results=int(os.getenv("RAG_MAX_RESULTS", "5")),
+        max_results=int(os.getenv("RAG_MAX_RESULTS", "3")),
         rag_api_base_url=os.getenv(
             "RAG_API_BASE_URL", "http://127.0.0.1:8090"
         ).strip().rstrip("/"),

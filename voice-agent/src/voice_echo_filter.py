@@ -6,26 +6,35 @@ import re
 
 from rag_client.prefetch import extract_message_text
 
-_ECHO_SKIP_PHRASES = frozenset(
-    {
-        "i dont have",
-        "i don't have",
-        "that detail",
-        "have that detail",
-        "since you have no further",
-        "no further question",
-        "other questions",
-        "uploaded documents",
-        "let me check",
-        "one moment",
-        "looking that up",
-    }
-)
-
-
 def normalize_echo_text(text: str) -> str:
     normalized = re.sub(r"[^\w\s]", "", text.strip().lower())
     return " ".join(normalized.split())
+
+_RAW_ECHO_SKIP_PHRASES = {
+    "i dont have",
+    "i don't have",
+    "that detail",
+    "have that detail",
+    "since you have no further",
+    "no further question",
+    "other questions",
+    "uploaded documents",
+    "let me check",
+    "one moment",
+    "looking that up",
+    "just a second",
+    "let me find",
+    "let me find that information",
+    "एक क्षण",
+    "एक सेकंड",
+    "मैं यह जानकारी देखता",
+    "मैं जांच कर रहा",
+    "मैं इसे देखकर बताता",
+    "जस्ट अ सेकंड",
+    "लेट मी चेक",
+    "लेट मी फाइंड",
+}
+_ECHO_SKIP_PHRASES = frozenset(normalize_echo_text(phrase) for phrase in _RAW_ECHO_SKIP_PHRASES)
 
 
 def recent_assistant_text(chat_ctx, *, max_messages: int = 3) -> str:

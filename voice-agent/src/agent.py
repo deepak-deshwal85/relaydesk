@@ -139,7 +139,7 @@ You are on a phone call. Follow these rules for natural speech:
 
 
 def _rag_filler_enabled() -> bool:
-    return os.getenv("RAG_FILLER_ENABLED", "true").strip().lower() in {
+    return os.getenv("RAG_FILLER_ENABLED", "false").strip().lower() in {
         "1",
         "true",
         "yes",
@@ -165,6 +165,7 @@ class DefaultAgent(Agent):
     ) -> None:
         self._client_config = client_config
         self._rag_settings = load_rag_settings()
+        self._search_answer_pending = False
         self._knowledge_retriever = knowledge_retriever or create_knowledge_retriever(
             client_config,
             self._rag_settings,
@@ -200,6 +201,13 @@ class DefaultAgent(Agent):
 
         user_text = extract_message_text(new_message.content)
 
+        if self._search_answer_pending and not should_auto_search_user_text(user_text):
+            logger.info(
+                "ignoring short follow-up while prior searchable turn is still pending: %r",
+                user_text,
+            )
+            raise StopResponse()
+
         if _echo_filter_enabled():
             assistant_text = recent_assistant_text(self.chat_ctx)
             agent_speaking = self.session.current_speech is not None
@@ -219,30 +227,34 @@ class DefaultAgent(Agent):
         if not should_auto_search_user_text(user_text):
             return
 
-        rag_task = asyncio.create_task(
-            prefetch_uploaded_documents(
-                client_config=self._client_config,
-                user_text=user_text,
-                retriever=self._knowledge_retriever,
-                settings=self._rag_settings,
-                already_filtered=True,
-            )
-        )
-
-        if _rag_filler_enabled():
-            # Play filler in the background; do not block the LLM on playout.
-            # Waiting for filler + RAG serializes two TTS segments and caused
-            # "flush audio emitter due to slow audio generation" breaks in logs.
-            self.session.say(
-                pick_filler_phrase(),
-                allow_interruptions=True,
-                add_to_chat_ctx=False,
+        self._search_answer_pending = True
+        try:
+            rag_task = asyncio.create_task(
+                prefetch_uploaded_documents(
+                    client_config=self._client_config,
+                    user_text=user_text,
+                    retriever=self._knowledge_retriever,
+                    settings=self._rag_settings,
+                    already_filtered=True,
+                )
             )
 
-        prefetched = await rag_task
+            if _rag_filler_enabled():
+                # Optional filler while RAG runs in background. Disabled by default
+                # because short acknowledgements during this gap can cancel the
+                # pending answer before it starts speaking.
+                self.session.say(
+                    pick_filler_phrase(self._client_config.voice_agent_language),
+                    allow_interruptions=True,
+                    add_to_chat_ctx=False,
+                )
 
-        if prefetched is not None:
-            turn_ctx.add_message(role="system", content=prefetched)
+            prefetched = await rag_task
+
+            if prefetched is not None:
+                turn_ctx.add_message(role="system", content=prefetched)
+        finally:
+            self._search_answer_pending = False
 
 
 def build_session_tools(
@@ -411,6 +423,10 @@ async def _finalize_call_summary(
     consumer_id = state.ctx.proc.userdata.get("consumer_id")
     job_id = state.ctx.proc.userdata.get("job_id")
     call_outcome = state.ctx.proc.userdata.get("call_outcome") or {}
+    if consumer_id is None:
+        logger.info("skipping call summary save: no consumer_id in job metadata")
+        await state.call_summary_client.aclose()
+        return
     try:
         transcript = build_call_transcript_from_collector(
             state.transcript_collector,

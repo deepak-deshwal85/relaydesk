@@ -69,19 +69,26 @@ def test_build_endpointing_options_invalid_mode_falls_back(monkeypatch):
 def test_build_interruption_options_defaults(monkeypatch):
     monkeypatch.setenv("VOICE_PROVIDER", "legacy")
     options = build_interruption_options()
+    assert options["enabled"] is True
     assert options["mode"] == "adaptive"
     assert options["min_words"] == 3
+    assert options["min_duration"] == 0.4
     assert options["resume_false_interruption"] is True
     assert options["false_interruption_timeout"] == 2.0
 
 
 def test_build_interruption_options_from_env(monkeypatch):
     monkeypatch.setenv("TURN_INTERRUPTION_MODE", "vad")
+    monkeypatch.setenv("TURN_INTERRUPTION_MIN_WORDS", "5")
+    monkeypatch.setenv("TURN_INTERRUPTION_MIN_DURATION", "1.2")
     monkeypatch.setenv("TURN_RESUME_FALSE_INTERRUPTION", "false")
     monkeypatch.setenv("TURN_FALSE_INTERRUPTION_TIMEOUT", "3.5")
 
     options = build_interruption_options()
+    assert options["enabled"] is True
     assert options["mode"] == "vad"
+    assert options["min_words"] == 5
+    assert options["min_duration"] == 1.2
     assert options["resume_false_interruption"] is False
     assert options["false_interruption_timeout"] == 3.5
 
@@ -151,7 +158,18 @@ def test_build_endpointing_options_console_uses_longer_max_delay(monkeypatch):
 def test_build_interruption_options_sarvam_uses_vad(monkeypatch):
     monkeypatch.setenv("VOICE_PROVIDER", "sarvam")
     options = build_interruption_options()
+    assert options["enabled"] is True
     assert options["mode"] == "vad"
+
+
+def test_build_interruption_options_sarvam_console_uses_stricter_thresholds(monkeypatch):
+    monkeypatch.setenv("VOICE_PROVIDER", "sarvam")
+    monkeypatch.setattr(sys, "argv", ["agent.py", "console"])
+    options = build_interruption_options()
+    assert options["enabled"] is False
+    assert options["mode"] == "vad"
+    assert options["min_words"] == 6
+    assert options["min_duration"] == 0.9
 
 
 def test_build_turn_handling_options_sarvam_uses_stt_turn_detection(monkeypatch):
@@ -166,3 +184,19 @@ def test_build_turn_handling_options_sarvam_uses_stt_turn_detection(monkeypatch)
         options = build_turn_handling_options(_sample_client_config())
 
     assert options["turn_detection"] == "stt"
+
+
+def test_build_turn_handling_options_sarvam_console_uses_vad(monkeypatch):
+    monkeypatch.setenv("LIVEKIT_API_KEY", "test-key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "test-secret")
+    monkeypatch.setenv("VOICE_PROVIDER", "sarvam")
+    monkeypatch.setattr(sys, "argv", ["agent.py", "console"])
+
+    with patch(
+        "turn_handling_config.requires_sync_turn_completion",
+        return_value=False,
+    ):
+        options = build_turn_handling_options(_sample_client_config())
+
+    assert options["turn_detection"] == "vad"
+    assert options["interruption"]["enabled"] is False

@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+MAX_FORMATTED_HITS = 2
+MAX_HIT_TEXT_CHARS = 280
+
 
 @dataclass(frozen=True)
 class RagSearchHit:
@@ -28,7 +31,10 @@ def format_search_hits(hits: list[RagSearchHit]) -> str:
         return "No matching information was found in the knowledge base."
 
     lines = ["Relevant document excerpts:"]
-    for index, hit in enumerate(hits, start=1):
+    for index, hit in enumerate(hits[:MAX_FORMATTED_HITS], start=1):
         source = f" (source: {hit.source_uri})" if hit.source_uri else ""
-        lines.append(f"{index}. {hit.text}{source}")
+        text = hit.text.strip()
+        if len(text) > MAX_HIT_TEXT_CHARS:
+            text = text[:MAX_HIT_TEXT_CHARS].rstrip() + "…"
+        lines.append(f"{index}. {text}{source}")
     return "\n".join(lines)

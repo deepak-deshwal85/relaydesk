@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from client_config import ClientConfig
-from rag_client.models import RagSearchHit, filter_relevant_hits
+from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
 from rag_client.prefetch import (
     DocumentPrefetchCache,
     build_prefetched_context_message,
@@ -24,6 +24,8 @@ def test_should_auto_search_skips_short_confirmations():
     assert should_auto_search_user_text("no") is False
     assert should_auto_search_user_text("Yes.") is False
     assert should_auto_search_user_text("Oh, stop.") is False
+    assert should_auto_search_user_text("ठीक है") is False
+    assert should_auto_search_user_text("नहीं सर") is False
     assert should_auto_search_user_text("I") is False
     assert should_auto_search_user_text("What is Reliance Industries?") is True
     assert should_auto_search_user_text("who founded reliance") is True
@@ -129,3 +131,18 @@ def test_build_prefetched_context_message_includes_excerpts():
     assert "Uploaded document search results" in message
     assert "Annual revenues" in message
     assert "uploaded documents" in message.lower()
+
+
+def test_format_search_hits_limits_count_and_truncates_text():
+    formatted = format_search_hits(
+        [
+            RagSearchHit(text="A" * 400, score=0.9, source_uri="a.txt"),
+            RagSearchHit(text="Second hit", score=0.8, source_uri="b.txt"),
+            RagSearchHit(text="Third hit", score=0.7, source_uri="c.txt"),
+        ]
+    )
+    assert "1." in formatted
+    assert "2." in formatted
+    assert "3." not in formatted
+    assert "Third hit" not in formatted
+    assert "…" in formatted

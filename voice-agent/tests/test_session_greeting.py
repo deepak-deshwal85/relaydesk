@@ -8,6 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from session_greeting import (
     GREETING_INSTRUCTIONS,
+    build_default_spoken_greeting,
+    build_instruction_style_spoken_greeting,
     build_greeting_reply_instructions,
     greet_caller,
     is_greeting_instructions,
@@ -41,6 +43,28 @@ def test_build_greeting_reply_instructions_uses_language_and_client_name():
     assert "Hindi" in spoken
 
 
+def test_build_default_spoken_greeting_uses_hindi_template():
+    spoken = build_default_spoken_greeting(
+        client_name="Deepak Deshwal",
+        voice_agent_language="hi-IN",
+    )
+    assert "Deepak Deshwal" in spoken
+    assert "नमस्ते" in spoken
+
+
+def test_build_instruction_style_spoken_greeting_uses_direct_template():
+    spoken = build_instruction_style_spoken_greeting(
+        client_name="Deepak Deshwal",
+        instructions=(
+            "Greet the caller briefly. Introduce the business and summarize key "
+            "service offerings in home construction."
+        ),
+        voice_agent_language="hi-IN",
+    )
+    assert "Deepak Deshwal" in spoken
+    assert "नमस्ते" in spoken
+
+
 @pytest.mark.asyncio
 async def test_greet_caller_uses_direct_tts_for_script():
     session = MagicMock()
@@ -60,12 +84,9 @@ async def test_greet_caller_uses_direct_tts_for_script():
 
 
 @pytest.mark.asyncio
-async def test_greet_caller_uses_spoken_template_for_instructions():
+async def test_greet_caller_uses_direct_default_template_for_default_instructions():
     session = MagicMock()
-    session.generate_reply = MagicMock()
-    handle = MagicMock()
-    handle.wait_for_playout = AsyncMock()
-    session.generate_reply.return_value = handle
+    session.say = AsyncMock()
     assert (
         await greet_caller(
             session,
@@ -75,10 +96,34 @@ async def test_greet_caller_uses_spoken_template_for_instructions():
         )
         is True
     )
-    session.generate_reply.assert_called_once()
-    assert "Deepak Deshwal" in session.generate_reply.call_args.kwargs["instructions"]
-    assert "Hindi" in session.generate_reply.call_args.kwargs["instructions"]
-    handle.wait_for_playout.assert_awaited_once()
+    session.say.assert_awaited_once()
+    spoken = session.say.await_args.args[0]
+    assert "Deepak Deshwal" in spoken
+    assert "नमस्ते" in spoken
+    session.generate_reply.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_greet_caller_uses_direct_tts_for_custom_instruction_style_greeting():
+    session = MagicMock()
+    session.say = AsyncMock()
+    assert (
+        await greet_caller(
+            session,
+            greeting_instructions=(
+                "Greet the caller briefly. Introduce the business and summarize key "
+                "service offerings in home construction. Ask what they would like to know."
+            ),
+            client_name="Deepak Deshwal",
+            voice_agent_language="hi-IN",
+        )
+        is True
+    )
+    session.say.assert_awaited_once()
+    spoken = session.say.await_args.args[0]
+    assert "Deepak Deshwal" in spoken
+    assert "नमस्ते" in spoken
+    session.generate_reply.assert_not_called()
 
 
 @pytest.mark.asyncio

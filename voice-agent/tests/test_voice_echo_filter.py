@@ -19,6 +19,11 @@ def test_is_likely_agent_echo_detects_fragment_overlap():
     assert is_likely_agent_echo("i don't have that detail", assistant) is True
 
 
+def test_is_likely_agent_echo_detects_hindi_or_transliterated_filler():
+    assert is_likely_agent_echo("जस्ट अ सेकंड", "") is True
+    assert is_likely_agent_echo("लेट मी फाइंड दैट इंफॉर्मेशन फॉर यू", "") is True
+
+
 def test_is_likely_agent_echo_allows_real_user_question():
     assistant = "I don't have that detail in the uploaded documents."
     assert (

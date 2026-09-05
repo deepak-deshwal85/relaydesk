@@ -27,6 +27,9 @@ DEFAULT_TURN_ENDPOINTING_ALPHA = 0.9
 
 DEFAULT_INTERRUPTION_MODE = "adaptive"
 DEFAULT_INTERRUPTION_MIN_WORDS = 3
+DEFAULT_INTERRUPTION_MIN_WORDS_SARVAM_CONSOLE = 6
+DEFAULT_INTERRUPTION_MIN_DURATION = 0.4
+DEFAULT_INTERRUPTION_MIN_DURATION_SARVAM_CONSOLE = 0.9
 DEFAULT_FALSE_INTERRUPTION_TIMEOUT = 2.0
 
 DEFAULT_PREEMPTIVE_MAX_SPEECH_DURATION = 10.0
@@ -58,6 +61,22 @@ def _default_endpointing_max_delay() -> float:
     return DEFAULT_TURN_ENDPOINTING_MAX_DELAY
 
 
+def _default_interruption_min_words() -> int:
+    if uses_stt_turn_detection() and _is_console_mode():
+        return DEFAULT_INTERRUPTION_MIN_WORDS_SARVAM_CONSOLE
+    return DEFAULT_INTERRUPTION_MIN_WORDS
+
+
+def _default_interruption_min_duration() -> float:
+    if uses_stt_turn_detection() and _is_console_mode():
+        return DEFAULT_INTERRUPTION_MIN_DURATION_SARVAM_CONSOLE
+    return DEFAULT_INTERRUPTION_MIN_DURATION
+
+
+def _console_echo_safe_mode() -> bool:
+    return uses_stt_turn_detection() and _is_console_mode()
+
+
 def build_endpointing_options() -> EndpointingOptions:
     mode = os.getenv("TURN_ENDPOINTING_MODE", DEFAULT_TURN_ENDPOINTING_MODE)
     if mode not in {"fixed", "dynamic"}:
@@ -75,7 +94,9 @@ def build_endpointing_options() -> EndpointingOptions:
 
 
 def build_interruption_options() -> InterruptionOptions:
-    if uses_stt_turn_detection():
+    if _console_echo_safe_mode():
+        mode = "vad"
+    elif uses_stt_turn_detection():
         # Adaptive interruption conflicts with STT turn detection (Sarvam saaras:v3).
         mode = "vad"
     else:
@@ -83,8 +104,13 @@ def build_interruption_options() -> InterruptionOptions:
     if mode not in {"adaptive", "vad"}:
         mode = DEFAULT_INTERRUPTION_MODE
     return InterruptionOptions(
+        enabled=not _console_echo_safe_mode(),
         mode=mode,
-        min_words=_int_env("TURN_INTERRUPTION_MIN_WORDS", DEFAULT_INTERRUPTION_MIN_WORDS),
+        min_words=_int_env("TURN_INTERRUPTION_MIN_WORDS", _default_interruption_min_words()),
+        min_duration=_float_env(
+            "TURN_INTERRUPTION_MIN_DURATION",
+            _default_interruption_min_duration(),
+        ),
         resume_false_interruption=_bool_env("TURN_RESUME_FALSE_INTERRUPTION", True),
         false_interruption_timeout=_float_env(
             "TURN_FALSE_INTERRUPTION_TIMEOUT", DEFAULT_FALSE_INTERRUPTION_TIMEOUT
@@ -114,7 +140,11 @@ def build_preemptive_generation_options(
 def build_turn_handling_options(client_config: ClientConfig) -> TurnHandlingOptions:
     requires_sync = requires_sync_turn_completion(client_config)
     turn_detection: inference.TurnDetector | str | None
-    if uses_stt_turn_detection():
+    if _console_echo_safe_mode():
+        # In console mode, use local VAD turn detection and uninterruptible
+        # replies so speaker bleed from laptop audio cannot cut off answers.
+        turn_detection = "vad"
+    elif uses_stt_turn_detection():
         # Sarvam saaras:v3 + flush_signal emit end-of-turn via STT.
         turn_detection = "stt"
     else:

@@ -20,6 +20,11 @@ _INSTRUCTION_MARKERS = (
     "ask we are offerings",
 )
 
+_DEFAULT_GREETING_TEMPLATES = {
+    "hi-IN": "नमस्ते, आपने {client_name} पर कॉल किया है। मैं दस्तावेज़ देखकर आपके सवालों में मदद कर सकता हूँ। आप क्या जानना चाहेंगे?",
+    "en-IN": "Hello, thank you for calling {client_name}. I can answer questions using the uploaded documents. What would you like to know?",
+}
+
 
 def is_session_closing_error(exc: BaseException) -> bool:
     return isinstance(exc, RuntimeError) and "AgentSession is closing" in str(exc)
@@ -47,6 +52,25 @@ def build_greeting_reply_instructions(
     )
 
 
+def build_default_spoken_greeting(*, client_name: str, voice_agent_language: str) -> str:
+    business_name = client_name.strip() or "our office"
+    template = _DEFAULT_GREETING_TEMPLATES.get(
+        voice_agent_language,
+        _DEFAULT_GREETING_TEMPLATES["en-IN"],
+    )
+    return template.format(client_name=business_name)
+
+
+def build_instruction_style_spoken_greeting(
+    *, client_name: str, instructions: str, voice_agent_language: str
+) -> str:
+    del instructions
+    return build_default_spoken_greeting(
+        client_name=client_name,
+        voice_agent_language=voice_agent_language,
+    )
+
+
 def normalize_spoken_greeting(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
 
@@ -64,14 +88,25 @@ async def greet_caller(
         logger.warning("empty greeting instructions; skipping greeting")
         return False
 
-    if is_greeting_instructions(instructions):
-        reply_instructions = build_greeting_reply_instructions(
+    if normalize_spoken_greeting(instructions) == normalize_spoken_greeting(
+        DEFAULT_VOICE_AGENT_GREETING
+    ):
+        spoken = build_default_spoken_greeting(
+            client_name=client_name,
+            voice_agent_language=voice_agent_language,
+        )
+        logger.info(
+            "using direct default greeting template (language=%s)",
+            voice_agent_language,
+        )
+    elif is_greeting_instructions(instructions):
+        spoken = build_instruction_style_spoken_greeting(
             client_name=client_name,
             instructions=instructions,
             voice_agent_language=voice_agent_language,
         )
         logger.info(
-            "using LLM-generated greeting (instruction-style config, language=%s)",
+            "using direct spoken greeting for instruction-style config (language=%s)",
             voice_agent_language,
         )
     else:
@@ -79,13 +114,12 @@ async def greet_caller(
         logger.info("using direct TTS greeting (script text from config)")
 
     try:
-        if is_greeting_instructions(instructions):
-            handle = session.generate_reply(
-                instructions=reply_instructions,
-                allow_interruptions=False,
-                tool_choice="none",
-            )
-            await handle.wait_for_playout()
+        if normalize_spoken_greeting(instructions) == normalize_spoken_greeting(
+            DEFAULT_VOICE_AGENT_GREETING
+        ):
+            await session.say(spoken, allow_interruptions=False)
+        elif is_greeting_instructions(instructions):
+            await session.say(spoken, allow_interruptions=False)
         else:
             await session.say(spoken, allow_interruptions=False)
         return True

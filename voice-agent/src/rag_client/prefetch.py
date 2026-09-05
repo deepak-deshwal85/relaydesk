@@ -15,25 +15,38 @@ from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_
 
 logger = logging.getLogger("relaydesk-agent")
 
+_RAW_SKIP_AUTO_SEARCH_PHRASES = {
+    "no",
+    "nope",
+    "yes",
+    "yeah",
+    "yep",
+    "ok",
+    "okay",
+    "okay stop",
+    "thanks",
+    "thank you",
+    "stop",
+    "oh stop",
+    "bye",
+    "goodbye",
+    "hi",
+    "hello",
+    "ok sir",
+    "okay sir",
+    "ठीक है",
+    "ठीक है सर",
+    "ठीक है जी",
+    "हां",
+    "हाँ",
+    "हाँ जी",
+    "जी",
+    "जी सर",
+    "नहीं",
+    "नहीं सर",
+}
 SKIP_AUTO_SEARCH_PHRASES = frozenset(
-    {
-        "no",
-        "nope",
-        "yes",
-        "yeah",
-        "yep",
-        "ok",
-        "okay",
-        "okay stop",
-        "thanks",
-        "thank you",
-        "stop",
-        "oh stop",
-        "bye",
-        "goodbye",
-        "hi",
-        "hello",
-    }
+    re.sub(r"[^\w\s]", "", phrase.strip().lower()) for phrase in _RAW_SKIP_AUTO_SEARCH_PHRASES
 )
 
 # Single words that always indicate an interrupt/dismissal, even inside a longer
@@ -44,17 +57,30 @@ DEFAULT_MIN_AUTO_SEARCH_WORDS = 2
 
 # Filler phrases spoken immediately while RAG runs in background.
 # Varied pool avoids sounding robotic.
-_FILLER_PHRASES = (
-    "Let me check that for you.",
-    "Sure, let me look that up.",
-    "One moment while I find that.",
-    "Let me find that information for you.",
-    "Just a second, looking that up now.",
-)
+_FILLER_PHRASES_BY_LANGUAGE = {
+    "hi-IN": (
+        "एक क्षण, मैं यह देखता हूं।",
+        "जी, मैं यह जानकारी देखता हूं।",
+        "कृपया एक सेकंड, मैं जांच कर रहा हूं।",
+        "मैं अभी यह जानकारी देखता हूं।",
+        "ठीक है, मैं इसे देखकर बताता हूं।",
+    ),
+    "en-IN": (
+        "Let me check that for you.",
+        "Sure, let me look that up.",
+        "One moment while I find that.",
+        "Let me find that information for you.",
+        "Just a second, looking that up now.",
+    ),
+}
 
 
-def pick_filler_phrase() -> str:
-    return random.choice(_FILLER_PHRASES)
+def pick_filler_phrase(language: str = "en-IN") -> str:
+    phrases = _FILLER_PHRASES_BY_LANGUAGE.get(
+        language,
+        _FILLER_PHRASES_BY_LANGUAGE["en-IN"],
+    )
+    return random.choice(phrases)
 
 DEFAULT_WARMUP_QUERIES = (
     "Who is the appellant",
