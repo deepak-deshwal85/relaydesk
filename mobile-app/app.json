@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "RelayDesk Mobile",
+    "slug": "relaydesk-mobile",
+    "scheme": "relaydesk",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "usesCleartextTraffic": true
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.1.7:8090",
+      "cognitoIssuer": "",
+      "cognitoClientId": "",
+      "cognitoScope": "relaydesk-api/access",
+      "authDisableSso": "true"
+    }
+  }
+}

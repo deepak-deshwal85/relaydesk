@@ -55,8 +55,19 @@ class Settings(BaseSettings):
     )
     qdrant_cluster_name: str | None = Field(default=None, alias="QDRANT_CLUSTER_NAME")
     cors_origins: str = Field(
-        default="http://localhost:3000,http://127.0.0.1:3000",
+        default=(
+            "http://localhost:3000,"
+            "http://127.0.0.1:3000,"
+            "http://localhost:8081,"
+            "http://127.0.0.1:8081,"
+            "http://localhost:19006,"
+            "http://127.0.0.1:19006"
+        ),
         alias="CORS_ORIGINS",
+    )
+    cors_origin_regex: str | None = Field(
+        default=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        alias="CORS_ORIGIN_REGEX",
     )
 
     oauth_disabled: bool = Field(default=False, alias="OAUTH_DISABLED")

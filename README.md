@@ -10,6 +10,7 @@ RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles p
 |-----------|------|------------------|
 | **API** | [`api/`](api/) | FastAPI service — RAG (Qdrant), PostgreSQL consumers/call jobs, Cognito JWT auth |
 | **UI** | [`ui/`](ui/) | Next.js operations console — SSO login, knowledge upload, search, call jobs |
+| **Mobile app** | [`mobile-app/`](mobile-app/) | Expo React Native app — mobile client for campaigns, consumers, knowledge, call history, and admin tools |
 | **Voice agent** | [`voice-agent/`](voice-agent/) | LiveKit agent — STT/LLM/TTS, Cal.com scheduling, RAG search on every turn |
 | **Infrastructure** | [`infra/`](infra/) | Terraform — VPC, ECS on EC2, ALB, Cognito, RDS, ECR, SSM secrets |
 
@@ -33,6 +34,7 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
 |-------|------|
 | API — local run, env vars, RAG/consumer APIs, scripts | [`api/README.md`](api/README.md) |
 | UI — Cognito/NextAuth, local dev, Docker/ECR deploy | [`ui/README.md`](ui/README.md) |
+| Mobile app — Expo setup, auth, mobile workflows | [`mobile-app/README.md`](mobile-app/README.md) |
 | Voice agent — LiveKit, phone configs, RAG client | [`voice-agent/README.md`](voice-agent/README.md) |
 | AWS — Terraform bootstrap, SSM, ECS, Cognito roles, ops scripts | [`infra/README.md`](infra/README.md) |
 | **New AWS account — full setup from scratch** | [`infra/NEW_INFRA_SETUP.md`](infra/NEW_INFRA_SETUP.md) |
@@ -71,7 +73,17 @@ npm run dev
 
 Open http://localhost:3000 → **Continue in local mode**.
 
-### 4. Voice agent (optional)
+### 4. Mobile app (optional)
+
+```powershell
+cd mobile-app
+npm install
+npm run start
+```
+
+Update `mobile-app/app.json` to point `apiBaseUrl` at your running API.
+
+### 5. Voice agent (optional)
 
 ```bash
 cd voice-agent
@@ -90,6 +102,7 @@ telephone-agent/
 ├── api/              # FastAPI RAG + consumer + call-job API
 ├── ui/               # Next.js operations console
 ├── voice-agent/      # LiveKit voice agent
+├── mobile-app/       # Expo React Native mobile app
 ├── infra/            # Terraform + operational scripts
 ├── README.md         # This file
 └── AGENTS.md         # LiveKit agent dev guide

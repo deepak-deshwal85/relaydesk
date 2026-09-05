@@ -1,0 +1,37 @@
+{
+  "name": "relaydesk-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.15",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "*",
+    "expo-auth-session": "*",
+    "expo-document-picker": "*",
+    "expo-linking": "*",
+    "expo-router": "*",
+    "expo-secure-store": "*",
+    "expo-status-bar": "*",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "^0.21.2"
+  },
+  "devDependencies": {
+    "@babel/core": "*",
+    "@types/react": "*",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
+    "typescript": "*"
+  }
+}

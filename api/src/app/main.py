@@ -5,6 +5,7 @@ import logging
 import os
 from contextlib import asynccontextmanager, suppress
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -29,6 +30,7 @@ from app.routers import (
     documents,
     embeddings,
     health,
+    mobile,
     search,
     voice_agent_config,
     voice_agent_schedules,
@@ -79,6 +81,18 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    allow_origins = settings.cors_origin_list
+    allow_origin_regex = getattr(
+        settings,
+        "cors_origin_regex",
+        r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    )
+    allow_credentials = True
+    if settings.oauth_disabled:
+        allow_origins = ["*"]
+        allow_origin_regex = None
+        allow_credentials = False
+
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
@@ -91,8 +105,9 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
-        allow_credentials=True,
+        allow_origins=allow_origins,
+        allow_origin_regex=allow_origin_regex,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -108,8 +123,19 @@ def create_app() -> FastAPI:
     app.include_router(voice_agent_schedules.router)
     app.include_router(clients.router)
     app.include_router(call_jobs.router)
+    app.include_router(mobile.router)
 
     return app
 
 
 app = create_app()
+
+
+if __name__ == "__main__":
+    # Bind 0.0.0.0 so Expo Go / phones on the LAN can reach the API.
+    # Override with HOST=127.0.0.1 if you only want local browser access.
+    uvicorn.run(
+        app,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8090")),
+    )

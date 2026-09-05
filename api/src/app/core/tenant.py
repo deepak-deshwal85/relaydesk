@@ -39,6 +39,54 @@ def resolve_user_email(
     return None
 
 
+async def resolve_mobile_client_email(
+    principal: AuthenticatedPrincipal,
+    repository: ClientRepository,
+    *,
+    client_email_id: str | None = None,
+    session_email: str | None = None,
+) -> str:
+    """Resolve the effective tenant for mobile-friendly routes.
+
+    Non-admin users default to their authenticated email when the client scope is
+    omitted. Admin and M2M callers must explicitly choose a client.
+    """
+    if is_scope_unrestricted(principal):
+        if not client_email_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="client_email_id is required for unrestricted clients",
+            )
+        normalized = client_email_id.strip().lower()
+        client = await repository.get_by_email(normalized)
+        if client is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found",
+            )
+        return normalized
+
+    effective_email = client_email_id or resolve_user_email(principal, session_email)
+    if not effective_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authenticated user email is required",
+        )
+    scoped_email = await verify_client_email_scope(
+        principal,
+        effective_email,
+        repository,
+        session_email=session_email,
+    )
+    client = await repository.get_by_email(scoped_email)
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found",
+        )
+    return scoped_email
+
+
 async def verify_client_email_scope(
     principal: AuthenticatedPrincipal,
     client_email_id: str,
