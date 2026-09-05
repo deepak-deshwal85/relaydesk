@@ -16,6 +16,7 @@ def _sample_resolved(**overrides) -> ResolvedVoiceAgentConfig:
         client_email_id="acme@example.com",
         client_name="Acme Support",
         client_business_phone_number="911171366880",
+        voice_agent_language="hi-IN",
         voice_agent_greeting_message="Hello from Acme.",
         calcom_username="acme-user",
         calcom_event_type_slug="30min",
@@ -34,10 +35,19 @@ def test_client_config_from_resolved_builds_calcom():
     assert config.phone_number == "911171366880"
     assert config.client_name == "Acme Support"
     assert config.client_email_id == "acme@example.com"
+    assert config.voice_agent_language == "hi-IN"
     assert config.greeting_message == "Hello from Acme."
     assert config.calcom is not None
     assert config.calcom.username == "acme-user"
     assert config.calcom.event_type_slug == "30min"
+
+
+def test_client_config_from_resolved_defaults_language_to_hindi():
+    config = client_config_from_resolved(
+        phone_digits="911171366880",
+        resolved=_sample_resolved(voice_agent_language=""),
+    )
+    assert config.voice_agent_language == "hi-IN"
 
 
 @pytest.mark.asyncio

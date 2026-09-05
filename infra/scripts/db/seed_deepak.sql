@@ -142,6 +142,7 @@ WHERE c.client_email_id = 'deepakdeshwal85@gmail.com'
 
 INSERT INTO client_voice_agent_configs (
     client_id,
+    voice_agent_language,
     voice_agent_greeting_message,
     calcom_username,
     calcom_event_type_slug,
@@ -149,6 +150,7 @@ INSERT INTO client_voice_agent_configs (
 )
 SELECT
     c.id,
+    'hi-IN',
     'Greet the caller briefly. Ask we are offerings home construction service .Say would you like anything about services. Ask what they would like to know.',
     'deepak-kumar-a7vq7q',
     '30min',

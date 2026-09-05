@@ -9,6 +9,33 @@ DEFAULT_VOICE_AGENT_GREETING = (
     "offerings. Say you can answer questions by searching the uploaded documents. "
     "Ask what they would like to know."
 )
+DEFAULT_VOICE_AGENT_LANGUAGE = "hi-IN"
+SUPPORTED_VOICE_AGENT_LANGUAGES = (
+    "hi-IN",
+    "en-IN",
+    "bn-IN",
+    "gu-IN",
+    "kn-IN",
+    "ml-IN",
+    "mr-IN",
+    "od-IN",
+    "pa-IN",
+    "ta-IN",
+    "te-IN",
+)
+VOICE_AGENT_LANGUAGE_LABELS = {
+    "hi-IN": "Hindi",
+    "en-IN": "English",
+    "bn-IN": "Bengali",
+    "gu-IN": "Gujarati",
+    "kn-IN": "Kannada",
+    "ml-IN": "Malayalam",
+    "mr-IN": "Marathi",
+    "od-IN": "Odia",
+    "pa-IN": "Punjabi",
+    "ta-IN": "Tamil",
+    "te-IN": "Telugu",
+}
 
 
 @dataclass(frozen=True)
@@ -25,12 +52,17 @@ class ClientConfig:
     client_name: str
     client_email_id: str
     greeting_message: str
+    voice_agent_language: str = DEFAULT_VOICE_AGENT_LANGUAGE
     calcom: CalComConfig | None = None
     rag_api_url: str | None = None
 
 
 def normalize_phone_number(phone: str) -> str:
     return re.sub(r"\D", "", phone)
+
+
+def voice_agent_language_label(code: str) -> str:
+    return VOICE_AGENT_LANGUAGE_LABELS.get(code, code)
 
 
 def client_config_from_resolved(
@@ -50,12 +82,17 @@ def client_config_from_resolved(
     phone_number = normalize_phone_number(
         resolved.client_business_phone_number or phone_digits
     )
+    language = (resolved.voice_agent_language or "").strip() or DEFAULT_VOICE_AGENT_LANGUAGE
+    if language not in SUPPORTED_VOICE_AGENT_LANGUAGES:
+        logger.warning("unsupported voice agent language %r; falling back to %s", language, DEFAULT_VOICE_AGENT_LANGUAGE)
+        language = DEFAULT_VOICE_AGENT_LANGUAGE
     greeting = resolved.voice_agent_greeting_message.strip() or DEFAULT_VOICE_AGENT_GREETING
 
     return ClientConfig(
         phone_number=phone_number,
         client_name=resolved.client_name,
         client_email_id=resolved.client_email_id,
+        voice_agent_language=language,
         greeting_message=greeting,
         calcom=calcom,
     )

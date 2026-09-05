@@ -85,6 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_call_summaries_client_start
 CREATE TABLE IF NOT EXISTS client_voice_agent_configs (
     id SERIAL PRIMARY KEY,
     client_id INTEGER NOT NULL UNIQUE REFERENCES clients(id) ON DELETE CASCADE,
+    voice_agent_language VARCHAR(16) NOT NULL DEFAULT 'hi-IN',
     voice_agent_greeting_message TEXT NOT NULL DEFAULT (
         'Greet the caller briefly. Introduce the business and summarize key service '
         'offerings. Say you can answer questions by searching the uploaded documents. '
@@ -97,6 +98,9 @@ CREATE TABLE IF NOT EXISTS client_voice_agent_configs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE client_voice_agent_configs
+    ADD COLUMN IF NOT EXISTS voice_agent_language VARCHAR(16) NOT NULL DEFAULT 'hi-IN';
 
 CREATE INDEX IF NOT EXISTS idx_client_voice_agent_configs_client_id
     ON client_voice_agent_configs (client_id);

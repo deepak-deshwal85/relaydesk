@@ -1,8 +1,8 @@
 """STT / LLM / TTS factories for the RelayDesk voice pipeline.
 
 Providers (``VOICE_PROVIDER``):
-  legacy (default) — AssemblyAI U3.5 Pro RT STT, DeepSeek V4 Flash LLM, Deepgram Aura-1 TTS
-  sarvam           — Saaras v3 STT, Sarvam LLM, Bulbul v3 TTS (Indian languages)
+  sarvam (default) — Saaras v3 STT, Gemini 3.6 Flash LLM, Bulbul v3 TTS
+  legacy           — AssemblyAI U3.5 Pro RT STT, DeepSeek V4 Flash LLM, Deepgram Aura-1 TTS
 """
 
 from __future__ import annotations
@@ -10,18 +10,17 @@ from __future__ import annotations
 import os
 from typing import Literal
 
-from livekit.plugins import assemblyai, deepgram, openai, sarvam
+from livekit.plugins import assemblyai, deepgram, google, openai, sarvam
 
 VoiceProvider = Literal["sarvam", "legacy"]
 
 # --- Sarvam defaults (https://docs.sarvam.ai/integrations/livekit) ---
 DEFAULT_SARVAM_STT_MODEL = "saaras:v3"
-DEFAULT_SARVAM_STT_LANGUAGE = "en-IN"
+DEFAULT_SARVAM_LANGUAGE = "hi-IN"
 DEFAULT_SARVAM_STT_MODE = "transcribe"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
-DEFAULT_SARVAM_TTS_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_SPEAKER = "shubh"
-DEFAULT_SARVAM_LLM_MODEL = "sarvam-30b"  # use sarvam-105b only if latency is acceptable
+DEFAULT_SARVAM_LLM_MODEL = "gemini-3.6-flash"
 
 # --- Legacy defaults (AssemblyAI U3.5 Pro RT + DeepSeek V4 Flash + Deepgram Aura-1) ---
 DEFAULT_STT_MODEL = "universal-3-5-pro"
@@ -56,7 +55,7 @@ def normalize_deepgram_tts_model(model: str) -> str:
 
 
 def get_voice_provider() -> VoiceProvider:
-    raw = os.getenv("VOICE_PROVIDER", "legacy").strip().lower()
+    raw = os.getenv("VOICE_PROVIDER", "sarvam").strip().lower()
     if raw == "sarvam":
         return "sarvam"
     return "legacy"
@@ -74,10 +73,16 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def build_stt(*, model: str | None = None, api_key: str | None = None):
+def build_stt(
+    *,
+    model: str | None = None,
+    api_key: str | None = None,
+    language: str | None = None,
+):
     if get_voice_provider() == "sarvam":
         return sarvam.STT(
-            language=os.getenv("SARVAM_STT_LANGUAGE", DEFAULT_SARVAM_STT_LANGUAGE),
+            language=language
+            or os.getenv("SARVAM_STT_LANGUAGE", DEFAULT_SARVAM_LANGUAGE),
             model=model or os.getenv("SARVAM_STT_MODEL", DEFAULT_SARVAM_STT_MODEL),
             mode=os.getenv("SARVAM_STT_MODE", DEFAULT_SARVAM_STT_MODE),
             api_key=api_key or os.getenv("SARVAM_API_KEY"),
@@ -100,9 +105,9 @@ def build_llm(
     base_url: str | None = None,
 ):
     if get_voice_provider() == "sarvam":
-        return sarvam.LLM(
-            model=model or os.getenv("SARVAM_LLM_MODEL", DEFAULT_SARVAM_LLM_MODEL),
-            api_key=api_key or os.getenv("SARVAM_API_KEY"),
+        return google.LLM(
+            model=model or os.getenv("GEMINI_LLM_MODEL", DEFAULT_SARVAM_LLM_MODEL),
+            api_key=api_key or os.getenv("GOOGLE_API_KEY"),
         )
     return openai.LLM(
         model=model or os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL),
@@ -112,12 +117,16 @@ def build_llm(
     )
 
 
-def build_tts(*, model: str | None = None, api_key: str | None = None):
+def build_tts(
+    *,
+    model: str | None = None,
+    api_key: str | None = None,
+    language: str | None = None,
+):
     if get_voice_provider() == "sarvam":
         return sarvam.TTS(
-            target_language_code=os.getenv(
-                "SARVAM_TTS_LANGUAGE", DEFAULT_SARVAM_TTS_LANGUAGE
-            ),
+            target_language_code=language
+            or os.getenv("SARVAM_TTS_LANGUAGE", DEFAULT_SARVAM_LANGUAGE),
             model=model or os.getenv("SARVAM_TTS_MODEL", DEFAULT_SARVAM_TTS_MODEL),
             speaker=os.getenv("SARVAM_TTS_SPEAKER", DEFAULT_SARVAM_TTS_SPEAKER),
             api_key=api_key or os.getenv("SARVAM_API_KEY"),

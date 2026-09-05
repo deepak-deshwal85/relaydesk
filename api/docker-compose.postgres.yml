@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: relaydesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: relaydesk
+      POSTGRES_USER: relaydesk
+      POSTGRES_PASSWORD: relaydesk
+    ports:
+      - "5434:5432"
+    volumes:
+      - relaydesk-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relaydesk -d relaydesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  relaydesk-postgres-data:

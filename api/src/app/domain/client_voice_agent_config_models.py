@@ -8,6 +8,7 @@ from datetime import datetime
 class ClientVoiceAgentConfig:
     id: int
     client_id: int
+    voice_agent_language: str
     voice_agent_greeting_message: str
     calcom_username: str | None
     calcom_event_type_slug: str | None

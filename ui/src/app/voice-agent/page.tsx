@@ -23,6 +23,19 @@ import { ArrowRight } from "lucide-react";
 
 const DEFAULT_GREETING =
   "Greet the caller briefly. Introduce the business and summarize key service offerings. Say you can answer questions by searching the uploaded documents. Ask what they would like to know.";
+const SUPPORTED_LANGUAGES = [
+  { code: "hi-IN", label: "Hindi" },
+  { code: "en-IN", label: "English" },
+  { code: "bn-IN", label: "Bengali" },
+  { code: "gu-IN", label: "Gujarati" },
+  { code: "kn-IN", label: "Kannada" },
+  { code: "ml-IN", label: "Malayalam" },
+  { code: "mr-IN", label: "Marathi" },
+  { code: "od-IN", label: "Odia" },
+  { code: "pa-IN", label: "Punjabi" },
+  { code: "ta-IN", label: "Tamil" },
+  { code: "te-IN", label: "Telugu" },
+] as const;
 
 export default function VoiceAgentPage() {
   const { clientEmailId, selectedClient, ready } = useClientScope();
@@ -31,6 +44,7 @@ export default function VoiceAgentPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const [voiceAgentLanguage, setVoiceAgentLanguage] = useState("hi-IN");
   const [greetingMessage, setGreetingMessage] = useState(DEFAULT_GREETING);
   const [calcomUsername, setCalcomUsername] = useState("");
   const [calcomEventSlug, setCalcomEventSlug] = useState("");
@@ -55,6 +69,7 @@ export default function VoiceAgentPage() {
           `v1/voice-agent-config${scopeSuffix}`,
         );
         if (cancelled) return;
+        setVoiceAgentLanguage(data.voice_agent_language || "hi-IN");
         setGreetingMessage(data.voice_agent_greeting_message || DEFAULT_GREETING);
         setCalcomUsername(data.calcom_username ?? "");
         setCalcomEventSlug(data.calcom_event_type_slug ?? "");
@@ -103,6 +118,7 @@ export default function VoiceAgentPage() {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          voice_agent_language: voiceAgentLanguage,
           voice_agent_greeting_message: greetingMessage.trim(),
           calcom_username: calcomUsername.trim() || null,
           calcom_event_type_slug: calcomEventSlug.trim() || null,
@@ -180,6 +196,26 @@ export default function VoiceAgentPage() {
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSave}>
+              <div>
+                <Label htmlFor="voice_agent_language">Conversation language</Label>
+                <select
+                  id="voice_agent_language"
+                  className="mt-1.5 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={voiceAgentLanguage}
+                  onChange={(e) => setVoiceAgentLanguage(e.target.value)}
+                >
+                  {SUPPORTED_LANGUAGES.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {language.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Default is Hindi. The voice agent uses this language for Sarvam Saaras
+                  v3 transcription, Bulbul v3 speech, and Gemini responses.
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="greeting_message">Greeting message</Label>
                 <textarea

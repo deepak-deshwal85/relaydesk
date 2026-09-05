@@ -130,6 +130,9 @@ class ClientVoiceAgentConfigRow(Base):
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, unique=True
     )
+    voice_agent_language: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="hi-IN", server_default="hi-IN"
+    )
     voice_agent_greeting_message: Mapped[str] = mapped_column(Text, nullable=False)
     calcom_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     calcom_event_type_slug: Mapped[str | None] = mapped_column(

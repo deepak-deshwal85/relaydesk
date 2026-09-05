@@ -9,6 +9,7 @@ from voice_pipeline_config import (
     DEFAULT_DEEPGRAM_TTS_MODEL,
     DEFAULT_LLM_MODEL,
     DEFAULT_SARVAM_LLM_MODEL,
+    DEFAULT_SARVAM_LANGUAGE,
     DEFAULT_SARVAM_STT_MODEL,
     DEFAULT_SARVAM_TTS_MODEL,
     DEFAULT_SARVAM_TTS_SPEAKER,
@@ -24,12 +25,6 @@ from voice_pipeline_config import (
 
 def test_default_voice_provider_is_legacy():
     with patch.dict(os.environ, {}, clear=True):
-        assert get_voice_provider() == "legacy"
-        assert uses_stt_turn_detection() is False
-
-
-def test_sarvam_voice_provider():
-    with patch.dict(os.environ, {"VOICE_PROVIDER": "sarvam"}, clear=True):
         assert get_voice_provider() == "sarvam"
         assert uses_stt_turn_detection() is True
 
@@ -48,7 +43,7 @@ def test_build_sarvam_stt_defaults():
     ), patch("voice_pipeline_config.sarvam.STT") as mock_stt:
         build_stt()
     mock_stt.assert_called_once_with(
-        language="en-IN",
+        language=DEFAULT_SARVAM_LANGUAGE,
         model=DEFAULT_SARVAM_STT_MODEL,
         mode="transcribe",
         api_key="test-sarvam-key",
@@ -62,15 +57,15 @@ def test_build_sarvam_stt_defaults():
 def test_build_sarvam_llm_defaults():
     with patch.dict(
         os.environ,
-        {"SARVAM_API_KEY": "test-sarvam-key", "VOICE_PROVIDER": "sarvam"},
+        {"GOOGLE_API_KEY": "google-key", "VOICE_PROVIDER": "sarvam"},
         clear=True,
-    ), patch("voice_pipeline_config.sarvam.LLM") as mock_llm:
+    ), patch("voice_pipeline_config.google.LLM") as mock_llm:
         build_llm()
     mock_llm.assert_called_once_with(
         model=DEFAULT_SARVAM_LLM_MODEL,
-        api_key="test-sarvam-key",
+        api_key="google-key",
     )
-    assert DEFAULT_SARVAM_LLM_MODEL == "sarvam-30b"
+    assert DEFAULT_SARVAM_LLM_MODEL == "gemini-3.6-flash"
 
 
 def test_build_sarvam_tts_defaults():
@@ -81,12 +76,34 @@ def test_build_sarvam_tts_defaults():
     ), patch("voice_pipeline_config.sarvam.TTS") as mock_tts:
         build_tts()
     mock_tts.assert_called_once_with(
-        target_language_code="en-IN",
+        target_language_code=DEFAULT_SARVAM_LANGUAGE,
         model=DEFAULT_SARVAM_TTS_MODEL,
         speaker=DEFAULT_SARVAM_TTS_SPEAKER,
         api_key="test-sarvam-key",
     )
     assert DEFAULT_SARVAM_TTS_MODEL == "bulbul:v3"
+
+
+def test_build_sarvam_stt_uses_explicit_language_override():
+    with patch.dict(
+        os.environ,
+        {"SARVAM_API_KEY": "test-sarvam-key", "VOICE_PROVIDER": "sarvam"},
+        clear=True,
+    ), patch("voice_pipeline_config.sarvam.STT") as mock_stt:
+        build_stt(language="ta-IN")
+    mock_stt.assert_called_once()
+    assert mock_stt.call_args.kwargs["language"] == "ta-IN"
+
+
+def test_build_sarvam_tts_uses_explicit_language_override():
+    with patch.dict(
+        os.environ,
+        {"SARVAM_API_KEY": "test-sarvam-key", "VOICE_PROVIDER": "sarvam"},
+        clear=True,
+    ), patch("voice_pipeline_config.sarvam.TTS") as mock_tts:
+        build_tts(language="ta-IN")
+    mock_tts.assert_called_once()
+    assert mock_tts.call_args.kwargs["target_language_code"] == "ta-IN"
 
 
 def test_default_stt_model_is_universal_3_5_pro():

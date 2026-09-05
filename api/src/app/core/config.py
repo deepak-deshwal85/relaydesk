@@ -112,7 +112,8 @@ class Settings(BaseSettings):
             )
         if not self.database_url:
             raise ValueError(
-                "DATABASE_URL is required (use RDS SSM tunnel: 127.0.0.1:15432)."
+                "DATABASE_URL is required (local Docker default: "
+                "postgresql+asyncpg://relaydesk:relaydesk@127.0.0.1:5434/relaydesk)."
             )
         return self
 

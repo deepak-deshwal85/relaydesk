@@ -4,6 +4,7 @@ export interface VoiceAgentConfig {
   client_email_id: string;
   client_name: string;
   client_business_phone_number: string | null;
+  voice_agent_language: string;
   voice_agent_greeting_message: string;
   calcom_username: string | null;
   calcom_event_type_slug: string | null;

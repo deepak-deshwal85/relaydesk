@@ -40,12 +40,13 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
 
 ## Quick start (local UI + API)
 
-Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — same managed services as production. No local Postgres or Docker Qdrant.
+Local development uses **Docker Postgres** and **Qdrant Cloud**. Production still uses AWS RDS.
 
-### 1. RDS tunnel (leave open)
+### 1. Local Postgres
 
 ```powershell
-python infra/scripts/rds_tunnel.py start
+cd api
+docker compose -f docker-compose.postgres.yml up -d
 ```
 
 ### 2. API
@@ -53,8 +54,6 @@ python infra/scripts/rds_tunnel.py start
 ```powershell
 cd api
 cp .env.example .env   # set OPENAI_API_KEY, QDRANT_CLUSTER_ENDPOINT, QDRANT_API_KEY, OAUTH_DISABLED=true
-$env:RDS_DB_PASSWORD = "YourRdsPassword"
-python ../infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```

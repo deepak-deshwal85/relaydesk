@@ -11,7 +11,7 @@ LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TT
 ### What it does
 
 - Connects to **LiveKit Cloud** for real-time audio rooms and SIP telephony.
-- Uses **AssemblyAI Universal-3.5-Pro Realtime** + **DeepSeek V4 Flash** + **Deepgram Aura-1** by default (`VOICE_PROVIDER=legacy`). Set `VOICE_PROVIDER=sarvam` for Sarvam AI (Indian English / Indic languages).
+- Uses **Sarvam Saaras v3** + **Google Gemini 3.6 Flash** + **Sarvam Bulbul v3** by default (`VOICE_PROVIDER=sarvam`) for Hindi, English, and other supported Indian languages.
 - Loads per-client config from the **RelayDesk API** (`GET /v1/voice-agent-config/resolve-by-phone`) at call start.
 - Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
 - Optional **Cal.com** tools for meeting scheduling.
@@ -56,12 +56,14 @@ cp .env.example .env
 | `LIVEKIT_URL` | Yes | `wss://<project>.livekit.cloud` |
 | `LIVEKIT_API_KEY` | Yes | LiveKit API key |
 | `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
-| `VOICE_PROVIDER` | No | `legacy` (default) or `sarvam` |
+| `VOICE_PROVIDER` | No | `sarvam` (default) or `legacy` |
 | `SARVAM_API_KEY` | Sarvam | Required when `VOICE_PROVIDER=sarvam` |
+| `GOOGLE_API_KEY` | Gemini | Required for direct Gemini billing when `VOICE_PROVIDER=sarvam` |
 | `SARVAM_STT_MODEL` | No | Default `saaras:v3` |
-| `SARVAM_STT_LANGUAGE` | No | Default `en-IN` (also `hi-IN`, etc.) |
-| `SARVAM_LLM_MODEL` | No | Default `sarvam-30b` (faster). `sarvam-105b` adds latency (~10s+ first token). |
+| `SARVAM_STT_LANGUAGE` | No | Fallback default `hi-IN`; per-client config can override this |
+| `GEMINI_LLM_MODEL` | No | Default `gemini-3.6-flash` via the LiveKit Google plugin |
 | `SARVAM_TTS_MODEL` | No | Default `bulbul:v3` |
+| `SARVAM_TTS_LANGUAGE` | No | Fallback default `hi-IN`; per-client config can override this |
 | `SARVAM_TTS_SPEAKER` | No | Default `shubh` |
 | `ASSEMBLYAI_API_KEY` | Legacy | Required when `VOICE_PROVIDER=legacy` (default) |
 | `STT_MODEL` | No | Default `universal-3-5-pro` (Universal-3.5-Pro Realtime) |
@@ -87,11 +89,11 @@ cp .env.example .env
    ```
 2. **Skip OAuth:** Set `OAUTH_DISABLED=true` in `api/.env` and remove or comment out `COGNITO_*` in `voice-agent/.env`.
 
-Also ensure the local API is running and (for RDS) the SSM tunnel is up before `uv run python src/agent.py console`.
+Also ensure the local API is running before `uv run python src/agent.py console`.
 
 ### Voice agent configuration
 
-Per-client settings (greeting with service offerings, Cal.com) live in Postgres and are edited in the RelayDesk UI under **Voice agent**, or via the API. When callers ask questions, the agent searches uploaded documents automatically.
+Per-client settings (conversation language, greeting with service offerings, Cal.com) live in Postgres and are edited in the RelayDesk UI under **Voice agent**, or via the API. When callers ask questions, the agent searches uploaded documents automatically.
 
 - `GET /v1/voice-agent-config?client_email_id=...` — read settings (UI)
 - `PUT /v1/voice-agent-config?client_email_id=...` — update settings (UI)

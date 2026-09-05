@@ -16,6 +16,7 @@ class ResolvedVoiceAgentConfig:
     client_email_id: str
     client_name: str
     client_business_phone_number: str | None
+    voice_agent_language: str
     voice_agent_greeting_message: str
     calcom_username: str | None
     calcom_event_type_slug: str | None
@@ -34,6 +35,7 @@ def _parse_resolve_payload(data: dict[str, object]) -> ResolvedVoiceAgentConfig:
             if data.get("client_business_phone_number")
             else None
         ),
+        voice_agent_language=str(data.get("voice_agent_language") or "hi-IN").strip(),
         voice_agent_greeting_message=str(data["voice_agent_greeting_message"]),
         calcom_username=str(data["calcom_username"]) if data.get("calcom_username") else None,
         calcom_event_type_slug=(

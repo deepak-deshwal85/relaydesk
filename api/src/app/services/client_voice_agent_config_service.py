@@ -29,6 +29,7 @@ class ClientVoiceAgentConfigService:
             client_email_id=config.client_email_id,
             client_name=config.client_name,
             client_business_phone_number=config.client_business_phone_number,
+            voice_agent_language=config.voice_agent_language,
             voice_agent_greeting_message=config.voice_agent_greeting_message,
             calcom_username=config.calcom_username,
             calcom_event_type_slug=config.calcom_event_type_slug,
@@ -47,6 +48,7 @@ class ClientVoiceAgentConfigService:
             client_email_id=config.client_email_id,
             client_name=config.client_name,
             client_business_phone_number=config.client_business_phone_number,
+            voice_agent_language=config.voice_agent_language,
             voice_agent_greeting_message=config.voice_agent_greeting_message,
             calcom_username=config.calcom_username,
             calcom_event_type_slug=config.calcom_event_type_slug,
@@ -74,6 +76,7 @@ class ClientVoiceAgentConfigService:
     ) -> VoiceAgentConfigResponse:
         config = await self._repository.upsert(
             client_email_id=client_email_id,
+            voice_agent_language=body.voice_agent_language,
             voice_agent_greeting_message=body.voice_agent_greeting_message,
             calcom_username=body.calcom_username,
             calcom_event_type_slug=body.calcom_event_type_slug,

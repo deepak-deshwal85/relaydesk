@@ -43,13 +43,12 @@ src/app/
 
 ## 2. Run locally
 
-Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — the same managed backends as production.
+Local development uses **Docker PostgreSQL** and **Qdrant Cloud**. Production continues to use AWS RDS.
 
 ### Prerequisites
 
 - Python 3.13+, [uv](https://docs.astral.sh/uv/)
-- [AWS CLI](https://aws.amazon.com/cli/) + profile (e.g. `relaydesk-admin`)
-- [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) for the RDS tunnel
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Qdrant Cloud cluster + API key
 - OpenAI API key (embeddings)
 
@@ -63,7 +62,7 @@ cp .env.example .env
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes (RAG) | OpenAI embeddings |
-| `DATABASE_URL` | Yes | RDS via tunnel: `...@127.0.0.1:15432/relaydesk` (see below) |
+| `DATABASE_URL` | Yes | Local Postgres: `postgresql+asyncpg://relaydesk:relaydesk@127.0.0.1:5434/relaydesk` |
 | `QDRANT_CLUSTER_ENDPOINT` | Yes | Qdrant Cloud HTTPS endpoint |
 | `QDRANT_API_KEY` | Yes | Qdrant Cloud API key |
 | `QDRANT_CLUSTER_NAME` | Optional | Cluster label (error messages) |
@@ -74,35 +73,29 @@ cp .env.example .env
 
 ### Start (Windows)
 
-**Terminal 1 — RDS tunnel** (leave open):
+**Terminal 1 — Postgres**:
 
 ```powershell
-python infra/scripts/rds_tunnel.py start
+cd api
+docker compose -f docker-compose.postgres.yml up -d
 ```
 
 **Terminal 2 — API**:
 
 ```powershell
-$env:RDS_DB_PASSWORD = "RelayDesh1#"
-python infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 cd api
+cp .env.example .env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
-### Initialize database (first time / fresh RDS)
+### Initialize database (first time / fresh local Postgres)
 
-The API **does not** create tables on startup. After RDS exists and `DATABASE_URL` is configured, bootstrap once (destructive — drops all tables, recreates schema, loads Deepak seed data):
+The API **does not** create tables on startup. After the Docker Postgres container is healthy and `DATABASE_URL` is configured, bootstrap once (destructive — drops all tables, recreates schema, loads Deepak seed data):
 
 ```powershell
-$env:RDS_DB_PASSWORD = "YourRdsPassword"
-python infra/scripts/bootstrap_db.py --use-tunnel --password $env:RDS_DB_PASSWORD --yes
-```
-
-Or:
-
-```bash
-python infra/scripts/bootstrap_db.py --yes
+cd api
+uv run python ../infra/scripts/bootstrap_db.py --yes
 ```
 
 Seed includes two Deepak clients (`deepakdeshwal85@gmail.com`, `deepakdeshwal85@yahoo.com`), voice agent configs, consumers, call jobs, and call summaries.
@@ -111,12 +104,12 @@ Seed includes two Deepak clients (`deepakdeshwal85@gmail.com`, `deepakdeshwal85@
 
 ```bash
 # Terminal 1
-python infra/scripts/rds_tunnel.py start
+cd api
+docker compose -f docker-compose.postgres.yml up -d
 
 # Terminal 2
-export RDS_DB_PASSWORD='YourRdsPassword'
-python infra/scripts/rds_tunnel.py write-env --password "$RDS_DB_PASSWORD"
-cd api && uv sync
+cd api && cp .env.example .env
+uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
@@ -189,7 +182,7 @@ Database bootstrap and deployment scripts live under [`../infra/scripts/`](../in
 | Script | Purpose |
 |--------|---------|
 | [`../infra/scripts/bootstrap_db.py`](../infra/scripts/bootstrap_db.py) | Drop, recreate, and seed PostgreSQL |
-| [`../infra/scripts/rds_tunnel.py`](../infra/scripts/rds_tunnel.py) | RDS SSM tunnel and `api/.env.local` setup |
+| [`docker-compose.postgres.yml`](docker-compose.postgres.yml) | Local PostgreSQL container for development |
 | [`../infra/scripts/deploy_api.py`](../infra/scripts/deploy_api.py) | Build, push, and deploy API to ECS |
 | [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync secrets to SSM |
 
