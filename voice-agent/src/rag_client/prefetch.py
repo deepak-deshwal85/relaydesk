@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import os
 import random
@@ -64,6 +65,7 @@ _FILLER_PHRASES_BY_LANGUAGE = {
         "कृपया एक सेकंड, मैं जांच कर रहा हूं।",
         "मैं अभी यह जानकारी देखता हूं।",
         "ठीक है, मैं इसे देखकर बताता हूं।",
+        "मैं आपकी मदद कर रहा हूं, एक क्षण।",
     ),
     "en-IN": (
         "Let me check that for you.",
@@ -81,6 +83,24 @@ def pick_filler_phrase(language: str = "en-IN") -> str:
         _FILLER_PHRASES_BY_LANGUAGE["en-IN"],
     )
     return random.choice(phrases)
+
+
+async def play_processing_filler(
+    session,
+    *,
+    language: str,
+    delay_seconds: float,
+    allow_interruptions: bool,
+) -> None:
+    """Speak a short hold phrase only when processing takes noticeably long."""
+    await asyncio.sleep(delay_seconds)
+    result = session.say(
+        pick_filler_phrase(language),
+        allow_interruptions=allow_interruptions,
+        add_to_chat_ctx=False,
+    )
+    if inspect.isawaitable(result):
+        await result
 
 DEFAULT_WARMUP_QUERIES = (
     "Who is the appellant",

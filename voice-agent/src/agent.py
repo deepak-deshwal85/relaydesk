@@ -1,8 +1,9 @@
 import asyncio
+import contextlib
+import sys
 import json
 import logging
 import os
-import sys
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from uuid import UUID
@@ -40,7 +41,7 @@ from rag_client.config import load_rag_settings
 from rag_client.prefetch import (
     create_knowledge_retriever,
     extract_message_text,
-    pick_filler_phrase,
+    play_processing_filler,
     prefetch_uploaded_documents,
     should_auto_search_user_text,
     warmup_knowledge_retriever,
@@ -139,12 +140,20 @@ You are on a phone call. Follow these rules for natural speech:
 
 
 def _rag_filler_enabled() -> bool:
-    return os.getenv("RAG_FILLER_ENABLED", "false").strip().lower() in {
+    return os.getenv("RAG_FILLER_ENABLED", "true").strip().lower() in {
         "1",
         "true",
         "yes",
         "on",
     }
+
+
+def _rag_filler_delay_seconds() -> float:
+    return float(os.getenv("RAG_FILLER_DELAY_SECONDS", "1.4"))
+
+
+def _console_mode() -> bool:
+    return any(arg == "console" for arg in sys.argv[1:])
 
 
 def _echo_filter_enabled() -> bool:
@@ -228,6 +237,7 @@ class DefaultAgent(Agent):
             return
 
         self._search_answer_pending = True
+        filler_task: asyncio.Task[None] | None = None
         try:
             rag_task = asyncio.create_task(
                 prefetch_uploaded_documents(
@@ -240,16 +250,21 @@ class DefaultAgent(Agent):
             )
 
             if _rag_filler_enabled():
-                # Optional filler while RAG runs in background. Disabled by default
-                # because short acknowledgements during this gap can cancel the
-                # pending answer before it starts speaking.
-                self.session.say(
-                    pick_filler_phrase(self._client_config.voice_agent_language),
-                    allow_interruptions=True,
-                    add_to_chat_ctx=False,
+                filler_task = asyncio.create_task(
+                    play_processing_filler(
+                        self.session,
+                        language=self._client_config.voice_agent_language,
+                        delay_seconds=_rag_filler_delay_seconds(),
+                        allow_interruptions=not _console_mode(),
+                    )
                 )
 
             prefetched = await rag_task
+
+            if filler_task is not None and not filler_task.done():
+                filler_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await filler_task
 
             if prefetched is not None:
                 turn_ctx.add_message(role="system", content=prefetched)

@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -9,6 +10,7 @@ from rag_client.prefetch import (
     DocumentPrefetchCache,
     build_prefetched_context_message,
     extract_message_text,
+    play_processing_filler,
     requires_sync_turn_completion,
     should_auto_search_user_text,
 )
@@ -93,6 +95,23 @@ def test_document_prefetch_cache_reuses_inflight_task():
         result = await cache.consume("revenue")
         assert result == "cached context"
         assert await cache.consume("revenue") == "cached context"
+
+    asyncio.run(_run())
+
+
+def test_play_processing_filler_waits_then_speaks():
+    import asyncio
+
+    async def _run() -> None:
+        session = MagicMock()
+        session.say = AsyncMock()
+        await play_processing_filler(
+            session,
+            language="hi-IN",
+            delay_seconds=0,
+            allow_interruptions=False,
+        )
+        session.say.assert_awaited_once()
 
     asyncio.run(_run())
 
