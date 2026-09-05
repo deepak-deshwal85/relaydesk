@@ -24,17 +24,17 @@ import { ArrowRight } from "lucide-react";
 const DEFAULT_GREETING =
   "Greet the caller briefly. Introduce the business and summarize key service offerings. Say you can answer questions by searching the uploaded documents. Ask what they would like to know.";
 const SUPPORTED_LANGUAGES = [
-  { code: "hi-IN", label: "Hindi" },
-  { code: "en-IN", label: "English" },
-  { code: "bn-IN", label: "Bengali" },
-  { code: "gu-IN", label: "Gujarati" },
-  { code: "kn-IN", label: "Kannada" },
-  { code: "ml-IN", label: "Malayalam" },
-  { code: "mr-IN", label: "Marathi" },
-  { code: "od-IN", label: "Odia" },
-  { code: "pa-IN", label: "Punjabi" },
-  { code: "ta-IN", label: "Tamil" },
-  { code: "te-IN", label: "Telugu" },
+  { code: "hi-IN", label: "Hindi", nativeLabel: "हिन्दी" },
+  { code: "en-IN", label: "English", nativeLabel: "English" },
+  { code: "bn-IN", label: "Bengali", nativeLabel: "বাংলা" },
+  { code: "gu-IN", label: "Gujarati", nativeLabel: "ગુજરાતી" },
+  { code: "kn-IN", label: "Kannada", nativeLabel: "ಕನ್ನಡ" },
+  { code: "ml-IN", label: "Malayalam", nativeLabel: "മലയാളം" },
+  { code: "mr-IN", label: "Marathi", nativeLabel: "मराठी" },
+  { code: "od-IN", label: "Odia", nativeLabel: "ଓଡ଼ିଆ" },
+  { code: "pa-IN", label: "Punjabi", nativeLabel: "ਪੰਜਾਬੀ" },
+  { code: "ta-IN", label: "Tamil", nativeLabel: "தமிழ்" },
+  { code: "te-IN", label: "Telugu", nativeLabel: "తెలుగు" },
 ] as const;
 
 export default function VoiceAgentPage() {
@@ -206,13 +206,15 @@ export default function VoiceAgentPage() {
                 >
                   {SUPPORTED_LANGUAGES.map((language) => (
                     <option key={language.code} value={language.code}>
-                      {language.label}
+                        {language.label} ({language.nativeLabel})
                     </option>
                   ))}
                 </select>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Default is Hindi. The voice agent uses this language for Sarvam Saaras
-                  v3 transcription, Bulbul v3 speech, and Gemini responses.
+                    Default is Hindi. The selected language is used for Sarvam Saaras
+                    v3 transcription, Bulbul v3 speech, Gemini responses, the opening
+                    greeting, and the short "please wait" helper phrases during longer
+                    processing pauses.
                 </p>
               </div>
 
@@ -228,8 +230,9 @@ export default function VoiceAgentPage() {
                   placeholder={DEFAULT_GREETING}
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Instructions for the opening greeting. Include your business name, service
-                  offerings, and that you can answer questions from uploaded documents.
+                  Write this in the same language you select above if you want a fixed
+                  scripted greeting. If you leave the default instruction-style text, the
+                  app will speak a short localized greeting automatically.
                 </p>
               </div>
 

@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from client_config import ClientConfig
+from client_config import ClientConfig, SUPPORTED_VOICE_AGENT_LANGUAGES
 from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
 from rag_client.prefetch import (
+    _FILLER_PHRASES_BY_LANGUAGE,
     DocumentPrefetchCache,
     build_prefetched_context_message,
     extract_message_text,
@@ -114,6 +115,10 @@ def test_play_processing_filler_waits_then_speaks():
         session.say.assert_awaited_once()
 
     asyncio.run(_run())
+
+
+def test_all_supported_languages_have_filler_phrases():
+    assert set(SUPPORTED_VOICE_AGENT_LANGUAGES).issubset(_FILLER_PHRASES_BY_LANGUAGE)
 
 
 def test_filter_relevant_hits_drops_weak_matches():

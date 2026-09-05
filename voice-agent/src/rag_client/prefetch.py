@@ -9,7 +9,7 @@ import re
 import time
 from collections.abc import Coroutine
 
-from client_config import ClientConfig
+from client_config import ClientConfig, SUPPORTED_VOICE_AGENT_LANGUAGES
 from rag_client.api_retriever import create_api_rag_retriever
 from rag_client.config import RagClientSettings, load_rag_settings
 from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
@@ -74,6 +74,42 @@ _FILLER_PHRASES_BY_LANGUAGE = {
         "Let me find that information for you.",
         "Just a second, looking that up now.",
     ),
+    "bn-IN": (
+        "একটু অপেক্ষা করুন, আমি দেখে নিচ্ছি।",
+        "আমি এখনই তথ্যটা দেখে বলছি।",
+    ),
+    "gu-IN": (
+        "એક ક્ષણ, હું આ જોઈ રહ્યો છું.",
+        "હું હમણાં જ માહિતી તપાસી રહ્યો છું.",
+    ),
+    "kn-IN": (
+        "ಒಂದು ಕ್ಷಣ, ನಾನು ಇದನ್ನು ನೋಡುತ್ತಿದ್ದೇನೆ.",
+        "ನಾನು ಈಗಲೇ ಮಾಹಿತಿಯನ್ನು ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇನೆ.",
+    ),
+    "ml-IN": (
+        "ഒരു നിമിഷം, ഞാൻ ഇത് പരിശോധിക്കുകയാണ്.",
+        "ഞാൻ ഇപ്പോൾ വിവരങ്ങൾ നോക്കി പറയുന്നു.",
+    ),
+    "mr-IN": (
+        "एक क्षण, मी हे पाहतो आहे.",
+        "मी आत्ता माहिती तपासून सांगतो.",
+    ),
+    "od-IN": (
+        "ଏକ ମୁହୂର୍ତ୍ତ, ମୁଁ ଏହା ଦେଖୁଛି।",
+        "ମୁଁ ଏବେ ସୂଚନା ଯାଞ୍ଚ କରୁଛି।",
+    ),
+    "pa-IN": (
+        "ਇੱਕ ਪਲ, ਮੈਂ ਇਹ ਵੇਖ ਰਿਹਾ ਹਾਂ।",
+        "ਮੈਂ ਹੁਣੇ ਜਾਣਕਾਰੀ ਚੈੱਕ ਕਰ ਰਿਹਾ ਹਾਂ।",
+    ),
+    "ta-IN": (
+        "ஒரு நிமிடம், நான் இதைப் பார்த்துக்கொள்கிறேன்.",
+        "நான் இப்போது தகவலைச் சரிபார்த்து சொல்கிறேன்.",
+    ),
+    "te-IN": (
+        "ఒక్క క్షణం, నేను ఇది చూస్తున్నాను.",
+        "నేను ఇప్పుడు సమాచారాన్ని చూసి చెబుతాను.",
+    ),
 }
 
 
@@ -83,6 +119,9 @@ def pick_filler_phrase(language: str = "en-IN") -> str:
         _FILLER_PHRASES_BY_LANGUAGE["en-IN"],
     )
     return random.choice(phrases)
+
+
+assert set(SUPPORTED_VOICE_AGENT_LANGUAGES).issubset(_FILLER_PHRASES_BY_LANGUAGE)
 
 
 async def play_processing_filler(

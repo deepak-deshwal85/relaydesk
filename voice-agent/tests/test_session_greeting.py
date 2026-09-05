@@ -6,8 +6,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from client_config import SUPPORTED_VOICE_AGENT_LANGUAGES
 from session_greeting import (
     GREETING_INSTRUCTIONS,
+    _DEFAULT_GREETING_TEMPLATES,
     build_default_spoken_greeting,
     build_instruction_style_spoken_greeting,
     build_greeting_reply_instructions,
@@ -50,6 +52,10 @@ def test_build_default_spoken_greeting_uses_hindi_template():
     )
     assert "Deepak Deshwal" in spoken
     assert "नमस्ते" in spoken
+
+
+def test_all_supported_languages_have_greeting_templates():
+    assert set(SUPPORTED_VOICE_AGENT_LANGUAGES).issubset(_DEFAULT_GREETING_TEMPLATES)
 
 
 def test_build_instruction_style_spoken_greeting_uses_direct_template():

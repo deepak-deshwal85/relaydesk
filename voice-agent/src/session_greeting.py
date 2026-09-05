@@ -5,7 +5,11 @@ import re
 
 from livekit.agents import AgentSession
 
-from client_config import DEFAULT_VOICE_AGENT_GREETING, voice_agent_language_label
+from client_config import (
+    DEFAULT_VOICE_AGENT_GREETING,
+    SUPPORTED_VOICE_AGENT_LANGUAGES,
+    voice_agent_language_label,
+)
 
 logger = logging.getLogger("relaydesk-agent")
 
@@ -23,6 +27,15 @@ _INSTRUCTION_MARKERS = (
 _DEFAULT_GREETING_TEMPLATES = {
     "hi-IN": "नमस्ते, आपने {client_name} पर कॉल किया है। मैं दस्तावेज़ देखकर आपके सवालों में मदद कर सकता हूँ। आप क्या जानना चाहेंगे?",
     "en-IN": "Hello, thank you for calling {client_name}. I can answer questions using the uploaded documents. What would you like to know?",
+    "bn-IN": "{client_name}-এ কল করার জন্য ধন্যবাদ। আমি নথি দেখে আপনার প্রশ্নের উত্তর দিতে পারি। আপনি কী জানতে চান?",
+    "gu-IN": "{client_name} પર કૉલ કરવા બદલ આભાર. હું દસ્તાવેજો જોઈને તમારા પ્રશ્નોમાં મદદ કરી શકું છું. તમે શું જાણવા માંગો છો?",
+    "kn-IN": "{client_name} ಗೆ ಕರೆ ಮಾಡಿದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು. ನಾನು ದಾಖಲೆಗಳನ್ನು ನೋಡಿ ನಿಮ್ಮ ಪ್ರಶ್ನೆಗಳಿಗೆ ಸಹಾಯ ಮಾಡಬಹುದು. ನೀವು ಏನು ತಿಳಿದುಕೊಳ್ಳಲು ಬಯಸುತ್ತೀರಿ?",
+    "ml-IN": "{client_name} ലേക്ക് വിളിച്ചതിന് നന്ദി. രേഖകൾ പരിശോധിച്ച് നിങ്ങളുടെ ചോദ്യങ്ങൾക്ക് ഞാൻ സഹായിക്കാം. നിങ്ങൾക്ക് എന്താണ് അറിയേണ്ടത്?",
+    "mr-IN": "{client_name} ला कॉल केल्याबद्दल धन्यवाद. मी कागदपत्रे पाहून तुमच्या प्रश्नांमध्ये मदत करू शकतो. तुम्हाला काय जाणून घ्यायचे आहे?",
+    "od-IN": "{client_name} କୁ କଲ୍ କରିଥିବାରୁ ଧନ୍ୟବାଦ। ମୁଁ ଡକ୍ୟୁମେଣ୍ଟ ଦେଖି ଆପଣଙ୍କ ପ୍ରଶ୍ନରେ ସହଯୋଗ କରିପାରିବି। ଆପଣ କ'ଣ ଜାଣିବାକୁ ଚାହୁଁଛନ୍ତି?",
+    "pa-IN": "{client_name} ਨੂੰ ਕਾਲ ਕਰਨ ਲਈ ਧੰਨਵਾਦ। ਮੈਂ ਦਸਤਾਵੇਜ਼ ਵੇਖ ਕੇ ਤੁਹਾਡੇ ਸਵਾਲਾਂ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ। ਤੁਸੀਂ ਕੀ ਜਾਣਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
+    "ta-IN": "{client_name} க்கு அழைத்ததற்கு நன்றி. ஆவணங்களை பார்த்து உங்கள் கேள்விகளுக்கு நான் உதவ முடியும். நீங்கள் என்ன জানতে விரும்புகிறீர்கள்?",
+    "te-IN": "{client_name} కు కాల్ చేసినందుకు ధన్యవాదాలు. పత్రాలను చూసి మీ ప్రశ్నలకు నేను సహాయం చేయగలను. మీరు ఏమి తెలుసుకోవాలనుకుంటున్నారు?",
 }
 
 
@@ -59,6 +72,9 @@ def build_default_spoken_greeting(*, client_name: str, voice_agent_language: str
         _DEFAULT_GREETING_TEMPLATES["en-IN"],
     )
     return template.format(client_name=business_name)
+
+
+assert set(SUPPORTED_VOICE_AGENT_LANGUAGES).issubset(_DEFAULT_GREETING_TEMPLATES)
 
 
 def build_instruction_style_spoken_greeting(
