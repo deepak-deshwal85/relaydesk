@@ -16,7 +16,7 @@
       "expo-router"
     ],
     "extra": {
-      "apiBaseUrl": "http://192.168.1.7:8090",
+      "apiBaseUrl": "http://127.0.0.1:8090",
       "cognitoIssuer": "",
       "cognitoClientId": "",
       "cognitoScope": "relaydesk-api/access",

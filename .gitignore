@@ -13,6 +13,11 @@ data/embedding_cache.sqlite-*
 voice-agent/data/
 api/data/
 
+# Local secrets. GitHub push protection rejects live API keys even on a private repo.
+.env
+.env.*
+!.env.example
+
 # Terraform
 .terraform/
 .terraform.lock.hcl
