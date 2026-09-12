@@ -49,10 +49,10 @@ async def _run(*, database_url: str) -> None:
     import asyncpg
 
     sys.path.insert(0, str(SCRIPTS_DIR))
-    from db_runner import apply_schema, to_asyncpg_dsn
+    from db_runner import apply_schema, asyncpg_connect_kwargs, to_asyncpg_dsn
 
     dsn = to_asyncpg_dsn(database_url)
-    connection = await asyncpg.connect(dsn)
+    connection = await asyncpg.connect(dsn, **asyncpg_connect_kwargs(database_url))
     try:
         await apply_schema(connection)
         print("Schema updates applied successfully.")

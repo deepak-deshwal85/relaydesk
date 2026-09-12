@@ -15,6 +15,7 @@ class SimulatedOutboundCaller:
         consumer: Consumer,
         client: Client,
         job_id,
+        sip_trunk_id: str | None = None,
     ) -> CallAttemptResult:
         detail = (
             f"SIMULATED call from client {client.client_business_phone_number} "

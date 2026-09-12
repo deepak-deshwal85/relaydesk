@@ -18,6 +18,7 @@ import type {
   ConsumerListResponse,
   ConsumerStatusValue,
   DocumentListResponse,
+  PhoneLine,
   SearchResponse,
   VoiceAgentConfig,
   VoiceAgentScheduleOverview,
@@ -71,6 +72,85 @@ function formatPhoneDisplay(value: string | null | undefined) {
 
 function buildClientQuery(clientEmailId: string | null | undefined) {
   return clientEmailId ? { client_email_id: clientEmailId } : undefined;
+}
+
+function BuyNumberCard({
+  clientEmailId,
+  sessionHeaders,
+  onPurchased,
+}: {
+  clientEmailId: string | null | undefined;
+  sessionHeaders: { accessToken: string | null; sessionEmail: string | null; sessionRole: string | null };
+  onPurchased?: () => Promise<void> | void;
+}) {
+  const [line, setLine] = useState<PhoneLine | null>(null);
+  const [buying, setBuying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!clientEmailId) return;
+    try {
+      const data = await apiRequest<PhoneLine>(
+        sessionHeaders,
+        "v1/mobile/phone-line",
+        undefined,
+        buildClientQuery(clientEmailId),
+      );
+      setLine(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load phone line");
+    }
+  }, [clientEmailId, sessionHeaders]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function buy() {
+    if (!clientEmailId) return;
+    setBuying(true);
+    try {
+      const data = await apiJson<PhoneLine>(
+        sessionHeaders,
+        "v1/mobile/phone-line/buy",
+        "POST",
+        {},
+        buildClientQuery(clientEmailId),
+      );
+      setLine(data);
+      setError(null);
+      await onPurchased?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to buy number");
+      await load();
+    } finally {
+      setBuying(false);
+    }
+  }
+
+  const active = line?.status === "active";
+  const buttonTitle = buying
+    ? "Buying number..."
+    : line?.status === "failed" || line?.status === "provisioning"
+      ? "Retry number setup"
+      : "Buy a business number";
+
+  return (
+    <Card>
+      <SectionTitle>Business number</SectionTitle>
+      <StatRow
+        label="Number"
+        value={formatPhoneDisplay(line?.phone_number_e164 ?? line?.phone_number)}
+      />
+      <StatRow label="Status" value={line?.status ?? "none"} />
+      {line?.message ? <Banner kind={active ? "info" : "error"} message={line.message} /> : null}
+      {error ? <Banner kind="error" message={error} /> : null}
+      {active ? null : (
+        <PrimaryButton title={buttonTitle} onPress={() => void buy()} disabled={buying || !clientEmailId} />
+      )}
+    </Card>
+  );
 }
 
 function summaryPreview(text: string, max = 120) {
@@ -527,6 +607,11 @@ export function CampaignsScreen() {
   return (
     <Screen title="Campaigns" subtitle="Run outbound calls now or on a schedule.">
       {error ? <Banner kind="error" message={error} /> : null}
+      <BuyNumberCard
+        clientEmailId={clientEmailId}
+        sessionHeaders={sessionHeaders}
+        onPurchased={load}
+      />
       <Card>
         <SectionTitle>Run campaign</SectionTitle>
         <StatRow label="Ready consumers" value={overview?.ready_consumer_count ?? 0} />
@@ -861,6 +946,7 @@ export function VoiceAgentScreen() {
   return (
     <Screen title="Voice agent" subtitle="Configure phone-call behavior and booking settings.">
       {error ? <Banner kind="error" message={error} /> : null}
+      <BuyNumberCard clientEmailId={clientEmailId} sessionHeaders={sessionHeaders} />
       <Card>
         <SectionTitle>Client</SectionTitle>
         <StatRow label="Name" value={selectedClient?.client_name ?? "-"} />
@@ -931,13 +1017,20 @@ export function ProfileScreen() {
       {isAdmin ? (
         <Banner kind="info" message="Admin users manage clients from the Admin tab." />
       ) : (
-        <Card>
+        <>
+          <BuyNumberCard
+            clientEmailId={session?.selected_client?.client_email_id}
+            sessionHeaders={sessionHeaders}
+            onPurchased={refreshSession}
+          />
+          <Card>
           <SectionTitle>Personal information</SectionTitle>
           <Field label="Name" value={name} onChangeText={setName} />
           <Field label="Personal phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <Field label="Business phone" value={session?.selected_client?.client_business_phone_number ?? ""} />
           <PrimaryButton title={saving ? "Saving..." : "Save changes"} onPress={() => void saveProfile()} disabled={saving} />
         </Card>
+        </>
       )}
       <SecondaryButton title="Sign out" onPress={() => void signOut()} />
     </Screen>

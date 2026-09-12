@@ -140,21 +140,29 @@ class Settings(BaseSettings):
     livekit_sip_outbound_trunk_id: str | None = Field(
         default=None, alias="LIVEKIT_SIP_OUTBOUND_TRUNK_ID"
     )
+    livekit_sip_host: str | None = Field(default=None, alias="LIVEKIT_SIP_HOST")
     livekit_agent_name: str = Field(
         default="relaydesk-agent", alias="LIVEKIT_AGENT_NAME"
     )
+    plivo_auth_id: str | None = Field(default=None, alias="PLIVO_AUTH_ID")
+    plivo_auth_token: str | None = Field(default=None, alias="PLIVO_AUTH_TOKEN")
+    plivo_number_country: str = Field(default="IN", alias="PLIVO_NUMBER_COUNTRY")
+    plivo_number_type: str = Field(default="local", alias="PLIVO_NUMBER_TYPE")
     voice_agent_schedule_enabled: bool = Field(
         default=True, alias="VOICE_AGENT_SCHEDULE_ENABLED"
     )
 
     @property
+    def livekit_configured(self) -> bool:
+        return bool(self.livekit_url and self.livekit_api_key and self.livekit_api_secret)
+
+    @property
     def livekit_outbound_enabled(self) -> bool:
-        return bool(
-            self.livekit_url
-            and self.livekit_api_key
-            and self.livekit_api_secret
-            and self.livekit_sip_outbound_trunk_id
-        )
+        return self.livekit_configured and bool(self.livekit_sip_outbound_trunk_id)
+
+    @property
+    def plivo_configured(self) -> bool:
+        return bool(self.plivo_auth_id and self.plivo_auth_token and self.livekit_sip_host)
 
 
 @lru_cache

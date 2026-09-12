@@ -49,4 +49,10 @@ Then open in Expo Go on the same Wi‑Fi network.
 
 If auto-rewrite fails, set `extra.apiBaseUrl` explicitly, for example `http://192.168.1.7:8090`.
 
-The phone-call agent remains server-side.
+The shared `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` is only a fallback. After a user buys a number, campaigns dial from that user's Plivo-backed LiveKit outbound trunk.
+
+Apply the phone-line table once:
+
+```powershell
+python infra/scripts/apply_schema.py
+```

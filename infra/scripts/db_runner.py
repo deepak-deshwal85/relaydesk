@@ -42,10 +42,14 @@ def to_asyncpg_dsn(database_url: str) -> str:
 
 
 def asyncpg_connect_kwargs(database_url: str, *, use_tunnel: bool = False) -> dict:
-    """Return asyncpg.connect kwargs. RDS requires SSL even via SSM port-forward."""
+    """Return asyncpg.connect kwargs.
+
+    Local Postgres (Windows service or Docker) does not use SSL.
+    Remote RDS, including an SSM tunnel, does.
+    """
     hostname = urlparse(database_url).hostname or ""
     if not use_tunnel and hostname in {"", "localhost", "127.0.0.1"}:
-        return {}
+        return {"ssl": False}
 
     import ssl
 

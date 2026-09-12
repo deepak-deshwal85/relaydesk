@@ -153,6 +153,52 @@ class ClientVoiceAgentConfigRow(Base):
     )
 
 
+class ClientPhoneLineRow(Base):
+    __tablename__ = "client_phone_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="plivo")
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="provisioning"
+    )
+    country_iso: Mapped[str] = mapped_column(String(2), nullable=False, default="IN")
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    phone_number_e164: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    plivo_origination_uri_uuid: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    plivo_inbound_trunk_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    plivo_credential_uuid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    plivo_outbound_trunk_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    plivo_outbound_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sip_username: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sip_password: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    livekit_inbound_trunk_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    livekit_outbound_trunk_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    livekit_dispatch_rule_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 class ClientVoiceAgentScheduleRow(Base):
     __tablename__ = "client_voice_agent_schedules"
 

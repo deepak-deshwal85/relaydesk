@@ -68,7 +68,8 @@ cp .env.example .env
 | `QDRANT_CLUSTER_NAME` | Optional | Cluster label (error messages) |
 | `OAUTH_DISABLED` | Local dev | `true` — skip JWT validation |
 | `COGNITO_*` | Production / SSO | User pool and client IDs |
-| `LIVEKIT_*` | Call jobs | Real outbound SIP calls |
+| `LIVEKIT_*` | Call jobs | Real outbound SIP calls. `LIVEKIT_SIP_HOST` is required to buy numbers |
+| `PLIVO_*` | Number purchase | Plivo Auth ID/token and default country for per-user trunks |
 | `CORS_ORIGINS` | Optional | e.g. `http://localhost:3000` |
 
 ### Start (Windows)

@@ -5,21 +5,30 @@ import time
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi import status as http_status
-from fastapi import UploadFile
 
 from app.core.collections import collection_from_email
 from app.core.config import Settings, get_settings
 from app.core.dependencies import (
     get_call_job_service,
     get_call_summary_service,
-    get_document_service,
     get_client_repository,
     get_client_service,
     get_client_voice_agent_config_service,
     get_collection_service,
     get_consumer_service,
+    get_document_service,
+    get_phone_line_service,
     get_search_service,
     get_voice_agent_schedule_service,
     require_permission,
@@ -28,18 +37,26 @@ from app.core.dependencies import (
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
 from app.core.rbac import Permission
-from app.core.tenant import is_scope_unrestricted, principal_email, resolve_mobile_client_email
+from app.core.tenant import (
+    is_scope_unrestricted,
+    principal_email,
+    resolve_mobile_client_email,
+)
 from app.db.postgres.client_repository import ClientRepository
-from app.schemas.call_jobs import CallJobListResponse, CallJobResponse, TriggerCallJobResponse
+from app.schemas.call_jobs import (
+    CallJobListResponse,
+    CallJobResponse,
+    TriggerCallJobResponse,
+)
 from app.schemas.call_summaries import (
     CallSummaryCreateRequest,
     CallSummaryListResponse,
     CallSummaryResponse,
 )
 from app.schemas.clients import (
-    ClientApproveRequest,
     ClientAdminListResponse,
     ClientAdminProfileResponse,
+    ClientApproveRequest,
     ClientDeleteResponse,
     ClientProfileResponse,
     ClientProfileUpsertRequest,
@@ -62,8 +79,12 @@ from app.schemas.documents import (
     DocumentUploadResponse,
 )
 from app.schemas.mobile import MobileSessionResponse
+from app.schemas.phone_lines import BuyPhoneLineRequest, PhoneLineResponse
 from app.schemas.search import SearchHitResponse, SearchRequest, SearchResponse
-from app.schemas.voice_agent_config import VoiceAgentConfigResponse, VoiceAgentConfigUpdateRequest
+from app.schemas.voice_agent_config import (
+    VoiceAgentConfigResponse,
+    VoiceAgentConfigUpdateRequest,
+)
 from app.schemas.voice_agent_schedules import (
     VoiceAgentScheduleOverviewResponse,
     VoiceAgentScheduleTriggerResponse,
@@ -76,6 +97,7 @@ from app.services.client_voice_agent_config_service import ClientVoiceAgentConfi
 from app.services.collection_service import CollectionService
 from app.services.consumer_service import ConsumerService
 from app.services.document_service import DocumentService
+from app.services.phone_line_service import PhoneLineService, PhoneProvisioningError
 from app.services.search_service import SearchService
 from app.services.voice_agent_schedule_service import VoiceAgentScheduleService
 
@@ -240,6 +262,68 @@ async def update_mobile_profile(
         return await service.upsert_profile(body, client_email_id=resolved_email)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/phone-line", response_model=PhoneLineResponse)
+async def get_mobile_phone_line(
+    request: Request,
+    service: Annotated[PhoneLineService, Depends(get_phone_line_service)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    client_email_id: Annotated[str | None, Query(min_length=3)] = None,
+) -> PhoneLineResponse:
+    resolved_email, _collection = await _resolve_client_context(
+        request, principal, repository, client_email_id
+    )
+    client = await repository.get_by_email(resolved_email)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    view = await service.get_line(client)
+    return PhoneLineResponse(
+        status=view.status,
+        phone_number=view.phone_number,
+        phone_number_e164=view.phone_number_e164,
+        provider=view.provider,
+        message=view.message,
+        last_error=view.last_error,
+    )
+
+
+@router.post("/phone-line/buy", response_model=PhoneLineResponse, status_code=http_status.HTTP_201_CREATED)
+async def buy_mobile_phone_line(
+    request: Request,
+    service: Annotated[PhoneLineService, Depends(get_phone_line_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(require_permission(Permission.DOCUMENT_WRITE)),
+    ],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    body: BuyPhoneLineRequest | None = None,
+    client_email_id: Annotated[str | None, Query(min_length=3)] = None,
+) -> PhoneLineResponse:
+    resolved_email, _collection = await _resolve_client_context(
+        request, principal, repository, client_email_id
+    )
+    client = await repository.get_by_email(resolved_email)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    payload = body or BuyPhoneLineRequest()
+    try:
+        view = await service.buy_and_provision(
+            client,
+            country_iso=payload.country_iso,
+            number_type=payload.number_type,
+        )
+    except PhoneProvisioningError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return PhoneLineResponse(
+        status=view.status,
+        phone_number=view.phone_number,
+        phone_number_e164=view.phone_number_e164,
+        provider=view.provider,
+        message=view.message,
+        last_error=view.last_error,
+    )
 
 
 @router.get("/consumers", response_model=ConsumerListResponse)

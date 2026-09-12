@@ -45,6 +45,15 @@ export interface Consumer {
   updated_at: string;
 }
 
+export interface PhoneLine {
+  status: string;
+  phone_number: string | null;
+  phone_number_e164: string | null;
+  provider: string | null;
+  message: string;
+  last_error: string | null;
+}
+
 export interface ConsumerListResponse {
   consumers: Consumer[];
   count: number;

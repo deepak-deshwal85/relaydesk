@@ -9,11 +9,12 @@ from app.core.config import Settings
 from app.db.postgres.call_job_repository import CallJobRepository
 from app.db.postgres.client_repository import ClientRepository
 from app.db.postgres.consumer_repository import ConsumerRepository
+from app.db.postgres.phone_line_repository import PhoneLineRepository
 from app.db.postgres.session import get_session_factory
-from app.domain.client_models import Client
 from app.domain.consumer_models import CallAttemptResult
 from app.schemas.call_jobs import CallAttemptResponse, CallJobResponse
 from app.services.outbound_caller import OutboundCaller, build_outbound_caller
+from app.services.phone_line_service import resolve_outbound_trunk_id
 
 logger = logging.getLogger("relaydesk-api")
 
@@ -118,6 +119,17 @@ class CallJobService:
                 await job_repository.mark_running(
                     job_id, total_consumers=len(consumers)
                 )
+                phone_line = await PhoneLineRepository(session).get_by_client_id(
+                    client.id
+                )
+
+            trunk_id = resolve_outbound_trunk_id(
+                line_status=phone_line.status if phone_line else None,
+                line_trunk_id=(
+                    phone_line.livekit_outbound_trunk_id if phone_line else None
+                ),
+                fallback_trunk_id=self._settings.livekit_sip_outbound_trunk_id,
+            )
 
             completed = 0
             for consumer in consumers:
@@ -125,6 +137,7 @@ class CallJobService:
                     consumer=consumer,
                     client=client,
                     job_id=job_id,
+                    sip_trunk_id=trunk_id,
                 )
                 results.append(result)
                 if result.success:

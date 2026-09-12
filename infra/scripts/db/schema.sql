@@ -56,6 +56,13 @@ CREATE TABLE IF NOT EXISTS call_jobs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Older local databases stored phone/email on the job instead of client_id.
+ALTER TABLE call_jobs
+    ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id) ON DELETE RESTRICT;
+
+ALTER TABLE call_jobs
+    ADD COLUMN IF NOT EXISTS total_consumers INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_call_jobs_client_id
     ON call_jobs (client_id);
 
@@ -122,3 +129,34 @@ CREATE TABLE IF NOT EXISTS client_voice_agent_schedules (
 CREATE INDEX IF NOT EXISTS idx_client_voice_agent_schedules_next_run
     ON client_voice_agent_schedules (next_run_at)
     WHERE enabled = TRUE;
+
+-- Per-client Plivo number plus the LiveKit trunks used to call from that number.
+CREATE TABLE IF NOT EXISTS client_phone_lines (
+    id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL UNIQUE REFERENCES clients(id) ON DELETE CASCADE,
+    provider VARCHAR(32) NOT NULL DEFAULT 'plivo',
+    status VARCHAR(32) NOT NULL DEFAULT 'provisioning',
+    country_iso VARCHAR(2) NOT NULL DEFAULT 'IN',
+    phone_number VARCHAR(32),
+    phone_number_e164 VARCHAR(32),
+    plivo_origination_uri_uuid VARCHAR(64),
+    plivo_inbound_trunk_id VARCHAR(64),
+    plivo_credential_uuid VARCHAR(64),
+    plivo_outbound_trunk_id VARCHAR(64),
+    plivo_outbound_domain VARCHAR(255),
+    sip_username VARCHAR(32),
+    sip_password VARCHAR(64),
+    livekit_inbound_trunk_id VARCHAR(64),
+    livekit_outbound_trunk_id VARCHAR(64),
+    livekit_dispatch_rule_id VARCHAR(64),
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_client_phone_lines_phone
+    ON client_phone_lines (phone_number)
+    WHERE phone_number IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_client_phone_lines_client_id
+    ON client_phone_lines (client_id);

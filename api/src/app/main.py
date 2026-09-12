@@ -31,6 +31,7 @@ from app.routers import (
     embeddings,
     health,
     mobile,
+    phone_lines,
     search,
     voice_agent_config,
     voice_agent_schedules,
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(voice_agent_schedules.router)
     app.include_router(clients.router)
     app.include_router(call_jobs.router)
+    app.include_router(phone_lines.router)
     app.include_router(mobile.router)
 
     return app

@@ -31,6 +31,7 @@ from app.services.collection_service import CollectionService
 from app.services.consumer_service import ConsumerService
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
+from app.services.phone_line_service import PhoneLineService
 from app.services.search_service import SearchService
 from app.services.voice_agent_schedule_service import VoiceAgentScheduleService
 
@@ -162,6 +163,12 @@ async def get_voice_agent_schedule_service(
         config_service=config_service,
         call_job_service=call_job_service,
     )
+
+
+def get_phone_line_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PhoneLineService:
+    return PhoneLineService(settings, get_session_factory())
 
 
 def get_call_job_service(

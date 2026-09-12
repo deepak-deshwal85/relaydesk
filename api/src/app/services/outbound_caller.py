@@ -15,12 +15,12 @@ logger = logging.getLogger("relaydesk-api")
 class OutboundCaller:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        if settings.livekit_outbound_enabled:
+        if settings.livekit_configured:
             self._inner = LiveKitOutboundCaller(settings)
             logger.info(
-                "outbound caller mode=livekit agent=%s trunk=%s",
+                "outbound caller mode=livekit agent=%s fallback_trunk=%s",
                 settings.livekit_agent_name,
-                settings.livekit_sip_outbound_trunk_id,
+                settings.livekit_sip_outbound_trunk_id or "none",
             )
         else:
             self._inner = SimulatedOutboundCaller()
@@ -35,8 +35,14 @@ class OutboundCaller:
         consumer: Consumer,
         client: Client,
         job_id: UUID,
+        sip_trunk_id: str | None = None,
     ) -> CallAttemptResult:
-        return await self._inner.place_call(consumer=consumer, client=client, job_id=job_id)
+        return await self._inner.place_call(
+            consumer=consumer,
+            client=client,
+            job_id=job_id,
+            sip_trunk_id=sip_trunk_id,
+        )
 
 
 def build_outbound_caller(settings: Settings) -> OutboundCaller:
